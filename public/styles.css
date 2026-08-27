@@ -9,7 +9,7 @@
   --bg-deep:   #06080d;
   --paper:     #e9e4d6;   /* warm off-white ink */
   --dim:       #8d8878;   /* faded ink */
-  --faint:     rgba(233, 228, 214, 0.38);
+  --faint:     rgba(233, 228, 214, 0.55);
   --hairline:  rgba(233, 228, 214, 0.14);
   --hairline2: rgba(233, 228, 214, 0.07);
   --phosphor:  #6ef3c1;   /* instrument green */
@@ -53,6 +53,11 @@ body {
 }
 
 a { color: inherit; }
+
+a:focus-visible, button:focus-visible {
+  outline: 1px solid var(--phosphor);
+  outline-offset: 3px;
+}
 
 /* ---------- annotations ---------- */
 
@@ -126,6 +131,11 @@ a { color: inherit; }
 #spectrum .sline:focus-visible .halo,
 #spectrum .sline.lit .halo { opacity: 1; }
 #spectrum .sline:focus-visible { outline: none; }
+#spectrum .sline:focus-visible .hit {
+  stroke: var(--paper);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
 
 #spectrum .sline-label {
   font-family: var(--mono);
@@ -224,7 +234,15 @@ a { color: inherit; }
   letter-spacing: 0.1em;
   color: var(--faint);
   white-space: nowrap;
+  text-align: right;
   transition: color 0.3s ease;
+}
+.index .entry-term {
+  display: block;
+  color: var(--dim);
+  text-transform: uppercase;
+  font-size: 10px;
+  margin-bottom: 5px;
 }
 .index .entry-lambda .swatch {
   display: inline-block;
@@ -286,7 +304,7 @@ a { color: inherit; }
 /* compact masthead while reading a plate */
 body.on-plate .masthead { padding-top: 22px; }
 body.on-plate .masthead-rule { margin-bottom: 18px; }
-body.on-plate .brand { font-size: 22px; letter-spacing: 0; }
+body.on-plate .brand { font-size: 22px; letter-spacing: 0; max-width: none; white-space: nowrap; }
 body.on-plate .subtitle { display: none; }
 
 
@@ -313,6 +331,8 @@ body.on-plate .subtitle { display: none; }
 }
 #plate-number { color: var(--faint); }
 #plate-number .star { color: var(--gold); letter-spacing: 0; }
+
+.plate-title:focus { outline: none; }
 
 .plate-title {
   font-size: clamp(36px, 6.5vw, 76px);
@@ -395,9 +415,19 @@ body.on-plate .subtitle { display: none; }
   color: var(--dim);
   align-self: center;
   text-transform: uppercase;
+  order: 1;            /* buttons stay pinned left; readout absorbs its own width changes */
+  margin-left: auto;
+  text-align: right;
 }
 
-.plate-figure figcaption { margin-top: 14px; line-height: 1.7; color: var(--faint); }
+.plate-figure figcaption {
+  margin-top: 14px;
+  line-height: 1.7;
+  color: var(--dim);
+  text-transform: none;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
 
 .plate-pager {
   display: flex;
@@ -443,7 +473,18 @@ body.on-plate .subtitle { display: none; }
   .index a { grid-template-columns: 54px 1fr; }
   .index .entry-lambda { display: none; }
   .index .entry-teaser { opacity: 1; transform: none; }
-  .index .entry-name { text-shadow: 0.22em 0 0 rgba(233,228,214,0.12), -0.18em 0 0 rgba(110,243,193,0.1); }
+}
+
+/* small screens: let the spectrum scroll instead of shrinking to nothing */
+@media (max-width: 700px) {
+  #spectrum { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #spectrum svg { min-width: 720px; }
+}
+
+/* no hover, no observation — keep entries collapsed on touch devices */
+@media (hover: none) {
+  .index .entry-name { text-shadow: none; }
+  .index .entry-teaser { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

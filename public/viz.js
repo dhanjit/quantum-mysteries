@@ -9,7 +9,7 @@
   const PH = '#6ef3c1';           // phosphor
   const GOLD = '#e8b84b';
   const PAPER = '#e9e4d6';
-  const DIM = 'rgba(233,228,214,0.35)';
+  const DIM = 'rgba(233,228,214,0.55)';
   const FAINT = 'rgba(233,228,214,0.14)';
   const RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -242,13 +242,14 @@
     let bA, bB;
 
     function newPair(t) {
-      pair = { born: t, measured: 0, sA: 0, sB: 0, ring: -1 };
+      pair = { born: t, measured: false, mT: 0, sA: 0, sB: 0 };
       if (bA) { bA.disabled = false; bB.disabled = false; }
     }
 
     function measure(which, t) {
       if (!pair || pair.measured) return;
-      pair.measured = t;
+      pair.measured = true;
+      pair.mT = t;
       pair.sA = Math.random() < 0.5 ? 1 : -1;
       pair.sB = -pair.sA;
       pair.by = which;
@@ -308,7 +309,7 @@
 
       const m = pair.measured;
       if (m) {
-        const dt = t - m;
+        const dt = t - pair.mT;
         // simultaneous flash at both ends
         if (dt < 0.8) {
           const r = easeOut(dt / 0.8) * 46;
@@ -331,7 +332,7 @@
       ctx.fillText(`SEPARATION: ${ly.toFixed(1)} LIGHT-YEARS (PRETEND)`, W / 2, H * 0.82);
       ctx.fillText('A', xA, cy + 44);
       ctx.fillText('B', xB, cy + 44);
-      if (m && t - m < 2.2) {
+      if (m && t - pair.mT < 2.2) {
         ctx.fillStyle = GOLD;
         ctx.fillText('BOTH DECIDED. NO SIGNAL TRAVELLED.', W / 2, H * 0.14);
       }
@@ -575,7 +576,7 @@
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Re-isolate the system', () => {
+    btn(controls, 'Prepare a fresh superposition', () => {
       coherence = 1; collisions = 0; env = [];
       chosen = Math.random() < 0.5 ? 0 : 1;
       isolatedUntil = st.now() + 1.4;
@@ -758,15 +759,16 @@
     }
 
     const st = stage(canvas, draw, 16 / 9);
+    const timers = [];
     btn(controls, 'Drop in a diary', () => {
       const chars = DIARY.replace(/ /g, '');
       for (let i = 0; i < chars.length; i++) {
-        setTimeout(() => spawnBit(st.W, st.H, chars[i]), i * 90);
+        timers.push(setTimeout(() => spawnBit(st.W, st.H, chars[i]), i * 90));
       }
       diary++;
       st.pulse(6);
     });
-    return () => st.destroy();
+    return () => { timers.forEach(clearTimeout); st.destroy(); };
   }
 
   /* ============================================================
@@ -1150,13 +1152,13 @@
   // wrap each viz's stage with a time tracker
   const _stage = stage;
   function stageTracked(canvas, draw, aspect) {
-    let s;
+    let lastT = 0;
     const wrapped = (ctx, W, H, t, dt) => {
-      s.lastT = t;
+      lastT = t;
       draw(ctx, W, H, t, dt);
     };
-    s = _stage(canvas, wrapped, aspect);
-    s.now = () => s.lastT || 0;
+    const s = _stage(canvas, wrapped, aspect);
+    s.now = () => lastT;
     return s;
   }
   // eslint-disable-next-line no-func-assign

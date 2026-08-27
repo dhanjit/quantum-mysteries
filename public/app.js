@@ -7,8 +7,9 @@
   const MYSTERIES = [
     {
       slug: 'measurement',
-      name: 'The Measurement Problem',
-      teaser: 'Why does looking change everything?',
+      name: 'Why Looking Changes Everything',
+      term: 'The Measurement Problem',
+      teaser: 'The wave goes everywhere — until you check.',
       nm: 589, // sodium D — the golden line
       starred: true,
       viz: 'measurement',
@@ -18,37 +19,41 @@
     },
     {
       slug: 'entanglement',
-      name: 'Entanglement & Nonlocality',
+      name: 'Spooky Action at a Distance',
+      term: 'Entanglement & Nonlocality',
       teaser: 'Two particles, one fate, any distance.',
       nm: 656, // H-alpha
       viz: 'entanglement',
       riddle: 'Measure one particle of an entangled pair and the other’s state is fixed at once — even if it is on the other side of the galaxy. Bell’s theorem proves the particles cannot merely be carrying a secret agreement made in advance, and half a century of experiments (Nobel Prize, 2022) confirms it.',
-      stakes: 'Either something links distant events faster than light (yet uselessly — no message can ride on it), or reality is not local, or measurements don’t have single outcomes. Each escape route breaks something we thought was bedrock.',
+      stakes: 'Either something links distant events faster than light (yet uselessly — no message can ride on it), or there are no pre-existing facts for measurements to reveal, or measurements don’t have single outcomes. Each escape route breaks something we thought was bedrock.',
       caption: 'A pair in superposition drifts apart. Measure either one: both decide together, instantly, and always oppositely. No signal passes between them.',
     },
     {
       slug: 'duality',
-      name: 'Wave–Particle Duality',
+      name: 'The Particle That Takes Both Doors',
+      term: 'Wave–Particle Duality',
       teaser: 'It travels as a wave and arrives as a dot.',
       nm: 486, // H-beta
       viz: 'duality',
-      riddle: 'Send electrons at two slits one at a time: each lands as a single dot, yet the dots slowly build an interference pattern — each electron has somehow gone through both slits and interfered with itself. Install a detector to see which slit it used, and the pattern quietly vanishes.',
-      stakes: 'Feynman called this the theory’s “only mystery”: a fact about the world that has, in his words, no classical explanation of any kind. Everything else in quantum mechanics is this, wearing different clothes.',
+      riddle: 'Send electrons at two slits one at a time: each lands as a single dot, yet the dots slowly build an interference pattern — as if each electron had gone through both slits and interfered with itself. Install a detector to see which slit it used, and the pattern quietly vanishes.',
+      stakes: 'Feynman called this the theory’s “only mystery” — a phenomenon that is, in his words, “impossible, absolutely impossible, to explain in any classical way”. Everything else in quantum mechanics is this, wearing different clothes.',
       caption: 'Particles fired one at a time. Leave them unwatched and fringes appear; switch the which-path detector on and the pattern collapses into two plain bands.',
     },
     {
       slug: 'boundary',
-      name: 'The Quantum–Classical Boundary',
+      name: 'Why Your Cat Is Never in Two Places',
+      term: 'The Quantum–Classical Boundary',
       teaser: 'Where does the weirdness stop?',
       nm: 434, // H-gamma
       viz: 'boundary',
       riddle: 'Electrons superpose; tables and cats apparently don’t. Decoherence explains why big superpositions become impossible to see — the environment “measures” everything, constantly — but not why one definite outcome becomes real. Meanwhile experiments keep putting ever larger objects, now molecules beyond 25,000 atomic mass units, into superposition. No edge has ever been found.',
       stakes: 'If there is no boundary, then the universe as a whole — including you — has a wavefunction. If there is one, something unknown to physics draws the line.',
-      caption: 'One object in two places. Stray particles scatter off it and its coherence drains away — it looks classical. Re-isolate it and the two places return.',
+      caption: 'One object in two places. Stray particles scatter off it and its coherence drains away — it looks classical, and mere isolation cannot bring it back. Prepare a fresh superposition and the two places return.',
     },
     {
       slug: 'psi',
-      name: 'Is the Wavefunction Real?',
+      name: 'The Ghost in the Equations',
+      term: 'Is the Wavefunction Real?',
       teaser: 'A thing in the world, or a note in our ledger?',
       nm: 518, // Mg triplet, green
       viz: 'psi',
@@ -58,17 +63,19 @@
     },
     {
       slug: 'information',
-      name: 'The Black Hole Information Paradox',
+      name: 'Do Black Holes Destroy the Past?',
+      term: 'The Information Paradox',
       teaser: 'The universe may be deleting its own memory.',
       nm: 397, // H-epsilon, deep violet
       viz: 'information',
-      riddle: 'Quantum mechanics forbids information from being destroyed — ever. General relativity says black holes evaporate into featureless thermal radiation, and Hawking’s calculation finds that radiation carries no memory of what fell in. When the black hole is gone, where did everything go?',
+      riddle: 'Quantum mechanics forbids information from being destroyed — ever. Yet apply quantum field theory to the curved spacetime of general relativity and Hawking’s calculation says black holes evaporate into featureless thermal radiation, carrying no memory of what fell in. When the black hole is gone, where did everything go?',
       stakes: 'One of our two best theories must give ground. Recent “island” calculations hint that the information does escape in the radiation — but no one can yet say how it gets out.',
       caption: 'Structure falls in; static leaks out. Drop in a diary and watch the horizon eat it. The radiation that will one day replace this black hole remembers nothing — or does it?',
     },
     {
       slug: 'gravity',
-      name: 'Quantum Gravity',
+      name: 'The Missing Theory of Everything',
+      term: 'Quantum Gravity',
       teaser: 'Spacetime itself refuses to be quantized.',
       nm: 740, // far red edge
       viz: 'gravity',
@@ -78,9 +85,10 @@
     },
     {
       slug: 'vacuum',
-      name: 'The Vacuum Catastrophe',
-      teaser: 'The worst prediction in the history of physics.',
-      nm: 411, // H-delta
+      name: 'The Worst Prediction in Physics',
+      term: 'The Vacuum Catastrophe',
+      teaser: 'Empty space, off by a factor of 10¹²⁰.',
+      nm: 410, // H-delta
       viz: 'vacuum',
       riddle: 'Empty space is not empty: quantum fields can never quite rest, so the vacuum seethes with zero-point energy. Add up the theory’s naïve estimate of that energy and it exceeds the value cosmologists actually measure by up to 120 orders of magnitude. Not off by a factor — off by a number with 120 zeros.',
       stakes: 'The tiny measured leftover is the dark energy accelerating the universe’s expansion. Explaining why the vacuum gravitates almost — but not exactly — zero may take physics beyond both quantum theory and relativity.',
@@ -88,7 +96,8 @@
     },
     {
       slug: 'time',
-      name: 'The Arrow of Time',
+      name: 'Why You Can’t Unbreak an Egg',
+      term: 'The Arrow of Time',
       teaser: 'The laws don’t know past from future. We do.',
       nm: 615, // orange
       viz: 'time',
@@ -98,8 +107,9 @@
     },
     {
       slug: 'randomness',
-      name: 'Is Anything Truly Random?',
-      teaser: 'God’s dice — loaded or not?',
+      name: 'Does God Play Dice?',
+      term: 'True Randomness',
+      teaser: 'Einstein hoped not. It’s still not settled.',
       nm: 546, // mercury green
       viz: 'randomness',
       riddle: 'Quantum outcomes look irreducibly random, and Bell-test experiments rule out any local, pre-written script for them. But loopholes of principle remain: superdeterminism, many-worlds and pilot-wave theory each restore determinism — at the price of abandoning free experimental choice, single outcomes, or locality.',
@@ -179,7 +189,7 @@
       const g = document.createElementNS(svgNS, 'a');
       g.setAttribute('href', '#/' + m.slug);
       g.setAttribute('class', 'sline');
-      g.setAttribute('aria-label', `${m.name} — λ ${m.nm} nm`);
+      g.setAttribute('aria-label', `${m.name} (${m.term}) — λ ${m.nm} nm`);
       const lx = x(m.nm);
       const color = m.starred ? '#ffd97a' : rgb(m.nm);
       const w = m.starred ? 5 : 2.5;
@@ -201,9 +211,10 @@
 
       // generous invisible hit area
       const hit = document.createElementNS(svgNS, 'rect');
-      hit.setAttribute('x', lx - 14); hit.setAttribute('y', 20);
-      hit.setAttribute('width', 28); hit.setAttribute('height', 190);
+      hit.setAttribute('x', lx - 17); hit.setAttribute('y', 20);
+      hit.setAttribute('width', 34); hit.setAttribute('height', 190);
       hit.setAttribute('fill', 'transparent');
+      hit.setAttribute('class', 'hit');
 
       const label = document.createElementNS(svgNS, 'text');
       const flip = lx > VW * 0.72;
@@ -233,6 +244,7 @@
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       let idx = 0;
       setInterval(() => {
+        if (document.hidden || atlasEl.hidden) return;
         const lines = svg.querySelectorAll('.sline');
         lines.forEach((l) => l.classList.remove('lit'));
         if (Math.random() < 0.6) {
@@ -276,7 +288,7 @@
 
       const lambda = document.createElement('span');
       lambda.className = 'entry-lambda';
-      lambda.innerHTML = `λ ${m.nm} nm<span class="swatch" style="background:${m.starred ? '#ffd97a' : rgb(m.nm)}"></span>`;
+      lambda.innerHTML = `<span class="entry-term">${m.term}</span>λ ${m.nm} nm<span class="swatch" style="background:${m.starred ? '#ffd97a' : rgb(m.nm)}"></span>`;
 
       a.appendChild(rank);
       a.appendChild(nameWrap);
@@ -297,7 +309,7 @@
     document.body.classList.add('on-plate');
 
     $('#plate-number').innerHTML =
-      `PLATE Nº ${pad(i + 1)}${m.starred ? ' <span class="star">★ THE CENTRAL MYSTERY</span>' : ''}`;
+      `PLATE Nº ${pad(i + 1)} — ${m.term.toUpperCase()}${m.starred ? ' <span class="star">★ THE CENTRAL MYSTERY</span>' : ''}`;
     $('#plate-title').textContent = m.name;
     $('#plate-teaser').textContent = m.teaser;
     $('#plate-riddle').textContent = m.riddle;
@@ -316,19 +328,27 @@
     const controls = $('#plate-controls');
     controls.innerHTML = '';
     const canvas = $('#plate-canvas');
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', m.caption);
     const mount = window.VIZ[m.viz];
     if (mount) cleanupViz = mount(canvas, controls);
 
-    document.title = `${m.name} — Quantum Mysteries`;
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    document.title = `${m.term} — Quantum Mysteries`;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    $('#plate-title').focus({ preventScroll: true });
   }
 
   function showAtlas() {
     if (cleanupViz) { cleanupViz(); cleanupViz = null; }
+    const wasOnPlate = document.body.classList.contains('on-plate');
     plateEl.hidden = true;
     atlasEl.hidden = false;
     document.body.classList.remove('on-plate');
     document.title = 'Quantum Mysteries — an atlas of the unsolved';
+    if (wasOnPlate) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      $('.brand a').focus({ preventScroll: true });
+    }
   }
 
   function route() {
