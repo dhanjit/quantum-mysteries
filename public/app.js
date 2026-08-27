@@ -7,7 +7,7 @@
   const MYSTERIES = [
     {
       slug: 'measurement',
-      name: 'Why Looking Changes Everything',
+      name: 'Why Looking Changes Reality',
       term: 'The Measurement Problem',
       teaser: 'The wave goes everywhere — until you check.',
       nm: 589, // sodium D — the golden line
