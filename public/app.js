@@ -19,7 +19,7 @@
     },
     {
       slug: 'entanglement',
-      name: 'Spooky Action at a Distance',
+      name: 'Two Coins That Always Land Opposite',
       term: 'Entanglement & Nonlocality',
       teaser: 'Two particles, one fate, any distance.',
       nm: 656, // H-alpha
