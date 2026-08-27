@@ -117,10 +117,16 @@
       { w: 0.34, c0: 0.62, amp: 0.2, sp: 0.16, ph: rand(0, TAU), sig: 0.11 },
       { w: 0.26, c0: 0.5, amp: 0.24, sp: 0.11, ph: rand(0, TAU), sig: 0.065 },
     ];
+    const motes = [];
+    for (let i = 0; i < 90; i++) {
+      motes.push({ u: Math.random(), v: Math.random(), tw: rand(0, TAU) });
+    }
     let collapse = null; // {x0, t0}
+    let pointer = null;
     let nMeas = 0;
+    const touchOnly = window.matchMedia('(hover: none)').matches;
     const ro = readout(controls);
-    ro.textContent = 'AWAITING OBSERVATION';
+    ro.textContent = 'THE PARTICLE IS SOMEWHERE IN THE FOG';
 
     const N = 240;
     function density(t) {
@@ -142,10 +148,9 @@
 
     function draw(ctx, W, H, t) {
       ctx.clearRect(0, 0, W, H);
-      const base = H * 0.82, top = H * 0.16;
+      const base = H * 0.84, top = H * 0.14;
       const d = density(t);
 
-      // collapse blending
       let k = 0, x0 = 0.5;
       if (collapse) {
         const dt = t - collapse.t0;
@@ -155,7 +160,7 @@
         else if (dt < 2.9) k = 1 - easeOut((dt - 1.15) / 1.75);
         else { collapse = null; k = 0; }
       }
-      const spikeSig = 0.006;
+      const spikeSig = 0.007;
       const blended = d.map((v, i) => {
         const x = i / (N - 1);
         const spike = Math.exp(-((x - x0) ** 2) / (2 * spikeSig * spikeSig));
@@ -166,11 +171,11 @@
       ctx.strokeStyle = FAINT;
       ctx.beginPath(); ctx.moveTo(0, base); ctx.lineTo(W, base); ctx.stroke();
 
-      // filled |ψ|²
+      // probability fog — soft, no graph line
       const col = collapse && k > 0.5 ? GOLD : PH;
       const grad = ctx.createLinearGradient(0, top, 0, base);
-      grad.addColorStop(0, col + 'cc');
-      grad.addColorStop(1, col + '08');
+      grad.addColorStop(0, col + '30');
+      grad.addColorStop(1, col + '05');
       ctx.beginPath();
       ctx.moveTo(0, base);
       for (let i = 0; i < N; i++) {
@@ -179,40 +184,72 @@
       ctx.lineTo(W, base);
       ctx.closePath();
       ctx.fillStyle = grad;
+      ctx.shadowColor = col; ctx.shadowBlur = 26;
+      ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 0.5;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.beginPath();
-      for (let i = 0; i < N; i++) {
-        const px = (i / (N - 1)) * W, py = base - blended[i] * (base - top);
-        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-      }
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.6;
-      ctx.shadowColor = col; ctx.shadowBlur = 12;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
 
-      // labels
-      ctx.fillStyle = DIM;
-      ctx.font = MONO(10);
-      ctx.fillText('|ψ(x)|²', 12, top - 2 < 12 ? 12 : top - 2);
+      // fireflies in the fog — any of them might be the one
+      for (const mo of motes) {
+        const xi = clamp(Math.round(mo.u * (N - 1)), 0, N - 1);
+        const env = blended[xi];
+        const xDraw = lerp(mo.u, x0, k) * W;
+        const yEnv = base - mo.v * env * (base - top) - 2;
+        const yDraw = k > 0 ? lerp(yEnv, base - 6, k) : yEnv;
+        const a = env * (0.25 + 0.55 * Math.abs(Math.sin(t * 2.2 + mo.tw)));
+        if (a < 0.03) continue;
+        ctx.globalAlpha = Math.min(a, 0.85);
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(xDraw, yDraw, 1.4, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // the found particle
       if (collapse && k > 0.7) {
         const px = x0 * W;
+        ctx.fillStyle = GOLD;
+        ctx.shadowColor = GOLD; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(px, base - 6, 4, 0, TAU); ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.strokeStyle = GOLD;
         ctx.setLineDash([2, 4]);
         ctx.beginPath(); ctx.moveTo(px, base); ctx.lineTo(px, H * 0.08); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = GOLD;
-        ctx.textAlign = px > W - 90 ? 'right' : 'left';
-        ctx.fillText('OUTCOME  x = ' + x0.toFixed(3), px + (px > W - 90 ? -8 : 8), H * 0.11);
+        ctx.font = MONO(10);
+        ctx.textAlign = px > W - 120 ? 'right' : 'left';
+        ctx.fillText('FOUND IT.  x = ' + x0.toFixed(3), px + (px > W - 120 ? -8 : 8), H * 0.11);
+        ctx.textAlign = 'left';
+      }
+
+      // your detector follows the mouse
+      if (pointer && !touchOnly) {
+        ctx.strokeStyle = PAPER;
+        ctx.globalAlpha = 0.7;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath(); ctx.moveTo(pointer.x, H * 0.05); ctx.lineTo(pointer.x, base); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(pointer.x, pointer.y, 9, 0, TAU); ctx.stroke();
+        ctx.fillStyle = PAPER;
+        ctx.beginPath(); ctx.arc(pointer.x, pointer.y, 1.5, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // labels
+      ctx.fillStyle = DIM;
+      ctx.font = MONO(10);
+      ctx.fillText('PROBABILITY FOG · |ψ(x)|²', 12, Math.max(top - 4, 12));
+      if (!collapse) {
+        ctx.textAlign = 'center';
+        ctx.fillText(touchOnly ? 'TAP THE FOG TO LOOK' : 'POINT ANYWHERE — CLICK TO LOOK', W / 2, H * 0.955);
         ctx.textAlign = 'left';
       }
     }
 
     const st = stage(canvas, draw, 16 / 9);
 
-    btn(controls, 'Measure', () => {
+    function look() {
       const t = st.now();
       const d = density(t);
       let total = 0;
@@ -224,11 +261,31 @@
       }
       nMeas++;
       collapse = { x0, t0: t };
-      ro.textContent = `MEASUREMENTS: ${nMeas} · LAST OUTCOME x = ${x0.toFixed(3)}`;
+      ro.textContent = `LOOKS: ${nMeas} · FOUND AT x = ${x0.toFixed(3)} · THE FOG CHOSE, NOT YOU`;
       st.pulse(3.2);
-    });
+    }
 
-    return () => st.destroy();
+    const onMove = (e) => {
+      const r = canvas.getBoundingClientRect();
+      pointer = { x: e.clientX - r.left, y: e.clientY - r.top };
+      st.pulse(1.5);
+    };
+    const onLeave = () => { pointer = null; };
+    const onClick = () => look();
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerleave', onLeave);
+    canvas.addEventListener('click', onClick);
+    if (!touchOnly) canvas.style.cursor = 'none';
+
+    btn(controls, 'Look', look);
+
+    return () => {
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('pointerleave', onLeave);
+      canvas.removeEventListener('click', onClick);
+      canvas.style.cursor = '';
+      st.destroy();
+    };
   }
 
   /* ============================================================

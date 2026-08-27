@@ -15,7 +15,7 @@
       viz: 'measurement',
       riddle: 'The Schrödinger equation moves every quantum system forward smoothly, predictably, deterministically — until a measurement happens. Then, abruptly, a single outcome is somehow selected and the rest of the wave is gone. Nothing in the mathematics says what counts as a “measurement”, when the collapse occurs, or whether it really occurs at all.',
       stakes: 'Every interpretation of quantum mechanics — Copenhagen, many-worlds, pilot waves, spontaneous collapse — is an attempt to answer this one question. A century after the theory was written down, there is still no agreed answer.',
-      caption: 'A wavefunction evolving under the Schrödinger equation. Press MEASURE and one outcome is drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows.',
+      caption: 'A particle spread out as a fog of probability. Point your detector anywhere and click to look: the whole fog snaps to one spot, drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows.',
     },
     {
       slug: 'entanglement',
