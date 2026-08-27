@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum Mysteries — an atlas of the unsolved</title>
+<meta name="description" content="The ten deepest unsolved mysteries of quantum physics, each with a short explanation and a live visual experiment.">
+<meta property="og:title" content="Quantum Mysteries">
+<meta property="og:description" content="An atlas of the unsolved. Ten spectral lines, none explained.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://quantummysteries.dhanjit.me">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0e14'/%3E%3Crect x='6' y='4' width='2' height='24' fill='%236ef3c1'/%3E%3Crect x='15' y='4' width='3' height='24' fill='%23e8b84b'/%3E%3Crect x='24' y='4' width='1.5' height='24' fill='%237aa8ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div id="app">
+
+  <header class="masthead">
+    <div class="masthead-rule">
+      <span class="mono-note">CATALOGUE OF OPEN PROBLEMS</span>
+      <span class="mono-note">N&nbsp;=&nbsp;10</span>
+    </div>
+    <h1 class="brand"><a href="#/">Quantum Mysteries</a></h1>
+    <p class="subtitle">An atlas of the unsolved</p>
+  </header>
+
+  <!-- ATLAS (landing) -->
+  <main id="view-atlas">
+    <figure class="spectrum-figure">
+      <div id="spectrum" role="img" aria-label="Interactive emission spectrum: ten bright lines, one per mystery. Use the index below to open each one."></div>
+      <figcaption class="mono-note">
+        FIG. 1 — EMISSION SPECTRUM OF THE UNKNOWN. TEN LINES, NONE EXPLAINED.
+        <span class="figcaption-hint">TOUCH A LINE TO OBSERVE IT</span>
+      </figcaption>
+    </figure>
+
+    <section class="index-section" aria-label="The catalogue of mysteries">
+      <div class="index-head">
+        <span class="mono-note">THE CATALOGUE</span>
+        <span class="mono-note">★ DENOTES THE CENTRAL MYSTERY</span>
+      </div>
+      <ol id="index" class="index"></ol>
+    </section>
+  </main>
+
+  <!-- PLATE (detail) -->
+  <main id="view-plate" hidden>
+    <nav class="plate-topnav">
+      <a href="#/" class="back-link mono-note">← THE SPECTRUM</a>
+      <span id="plate-lambda" class="mono-note"></span>
+    </nav>
+
+    <header class="plate-header">
+      <p class="mono-note" id="plate-number"></p>
+      <h2 class="plate-title" id="plate-title"></h2>
+      <p class="plate-teaser" id="plate-teaser"></p>
+    </header>
+
+    <div class="plate-body">
+      <article class="plate-prose">
+        <section>
+          <h3 class="mono-note">THE RIDDLE</h3>
+          <p id="plate-riddle"></p>
+        </section>
+        <section>
+          <h3 class="mono-note">WHAT'S AT STAKE</h3>
+          <p id="plate-stakes"></p>
+        </section>
+      </article>
+
+      <figure class="plate-figure">
+        <div class="canvas-frame">
+          <canvas id="plate-canvas"></canvas>
+        </div>
+        <div id="plate-controls" class="plate-controls"></div>
+        <figcaption class="mono-note" id="plate-caption"></figcaption>
+      </figure>
+    </div>
+
+    <nav class="plate-pager">
+      <a id="pager-prev" href="#/"><span class="mono-note">← PREV</span><span id="pager-prev-name" class="pager-name"></span></a>
+      <a id="pager-next" href="#/"><span class="mono-note">NEXT →</span><span id="pager-next-name" class="pager-name"></span></a>
+    </nav>
+  </main>
+
+  <footer class="colophon">
+    <span class="mono-note">QUANTUMMYSTERIES.DHANJIT.ME</span>
+    <span class="mono-note">NOTHING HERE IS SETTLED · <a href="https://github.com/dhanjit/quantum-mysteries">SOURCE</a></span>
+  </footer>
+
+</div>
+
+<script src="viz.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "quantum-mysteries",
+  "compatibility_date": "2026-08-27",
+  "assets": {
+    "directory": "./public"
+  },
+  "routes": [
+    {
+      "pattern": "quantummysteries.dhanjit.me",
+      "custom_domain": true
+    }
+  ]
+}
