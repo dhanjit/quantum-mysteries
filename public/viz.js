@@ -124,6 +124,7 @@
     let collapse = null; // {x0, t0}
     let pointer = null;
     let nMeas = 0;
+    let lastAction = 0;
     const touchOnly = window.matchMedia('(hover: none)').matches;
     const ro = readout(controls);
     ro.textContent = 'THE PARTICLE IS SOMEWHERE IN THE FOG';
@@ -150,6 +151,9 @@
       ctx.clearRect(0, 0, W, H);
       const base = H * 0.84, top = H * 0.14;
       const d = density(t);
+
+      // looks happen on their own if nobody intervenes
+      if (!collapse && t > 5 && t - lastAction > 7) look();
 
       let k = 0, x0 = 0.5;
       if (collapse) {
@@ -260,6 +264,7 @@
         if (r <= 0) { x0 = i / (d.length - 1); break; }
       }
       nMeas++;
+      lastAction = t;
       collapse = { x0, t0: t };
       ro.textContent = `LOOKS: ${nMeas} · FOUND AT x = ${x0.toFixed(3)} · THE FOG CHOSE, NOT YOU`;
       st.pulse(3.2);
@@ -295,6 +300,8 @@
      ============================================================ */
   function vizEntanglement(canvas, controls) {
     let pair = null, pairs = 0, correlated = 0;
+    let posA = null, posB = null, lastUser = -99;
+    const touchOnly = window.matchMedia('(hover: none)').matches;
     const ro = readout(controls);
     let bA, bB;
 
@@ -357,6 +364,12 @@
       const cy = H * 0.44;
       const sep = Math.min(easeOut(Math.min(age / 6, 1)) * (W * 0.42), W * 0.42);
       const xA = W / 2 - 30 - sep, xB = W / 2 + 30 + sep;
+      posA = { x: xA, y: cy }; posB = { x: xB, y: cy };
+
+      // the experiment demonstrates itself when nobody intervenes
+      if (!pair.measured && age > 4 && t - lastUser > 8) {
+        measure(Math.random() < 0.5 ? 'A' : 'B', t);
+      }
 
       // channel
       ctx.strokeStyle = FAINT;
@@ -392,15 +405,43 @@
       if (m && t - pair.mT < 2.2) {
         ctx.fillStyle = GOLD;
         ctx.fillText('BOTH DECIDED. NO SIGNAL TRAVELLED.', W / 2, H * 0.14);
+      } else if (!m) {
+        ctx.fillStyle = DIM;
+        ctx.fillText(touchOnly ? 'TAP A PARTICLE — OR JUST WATCH' : 'CLICK A PARTICLE — OR JUST WATCH', W / 2, H * 0.14);
       }
       ctx.textAlign = 'left';
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    bA = btn(controls, 'Measure A', () => { measure('A', st.now()); st.pulse(2.5); });
-    bB = btn(controls, 'Measure B', () => { measure('B', st.now()); st.pulse(2.5); });
-    ro.textContent = 'A PAIR IN SUPERPOSITION. MEASURE EITHER ONE.';
-    return () => st.destroy();
+
+    const near = (p, x, y) => p && (x - p.x) ** 2 + (y - p.y) ** 2 < 34 * 34;
+    const canvasXY = (e) => {
+      const r = canvas.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    };
+    const onClick = (e) => {
+      if (!pair || pair.measured) return;
+      const [x, y] = canvasXY(e);
+      if (near(posA, x, y)) { lastUser = st.now(); measure('A', st.now()); st.pulse(2.5); }
+      else if (near(posB, x, y)) { lastUser = st.now(); measure('B', st.now()); st.pulse(2.5); }
+    };
+    const onMove = (e) => {
+      const [x, y] = canvasXY(e);
+      const hot = pair && !pair.measured && (near(posA, x, y) || near(posB, x, y));
+      canvas.style.cursor = hot ? 'pointer' : '';
+    };
+    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('pointermove', onMove);
+
+    bA = btn(controls, 'Measure A', () => { lastUser = st.now(); measure('A', st.now()); st.pulse(2.5); });
+    bB = btn(controls, 'Measure B', () => { lastUser = st.now(); measure('B', st.now()); st.pulse(2.5); });
+    ro.textContent = 'IT RUNS ITSELF — OR MEASURE A PARTICLE YOURSELF';
+    return () => {
+      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.style.cursor = '';
+      st.destroy();
+    };
   }
 
   /* ============================================================
@@ -413,8 +454,18 @@
     let flying = [];   // {p: 0..1, slit, y0, yT, jx}
     let hits = [];     // {y, age}
     let bins = null, nHits = 0;
+    let lastToggle = 0, tb = null;
     const NB = 64;
     const ro = readout(controls);
+
+    function setWatching(w) {
+      watching = w;
+      if (tb) {
+        tb.textContent = 'Which-path detector: ' + (watching ? 'on' : 'off');
+        tb.setAttribute('aria-pressed', watching);
+      }
+      bins = null; hits = []; nHits = 0;
+    }
 
     function targetY(H) {
       const cy = H / 2, envA = H * 0.30;
@@ -438,6 +489,10 @@
 
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
+
+      // the detector switches itself so the lesson plays out unattended
+      if (t - lastToggle > 16 && t > 1) { lastToggle = t; setWatching(!watching); }
+
       if (!bins) bins = new Float32Array(NB);
       const srcX = W * 0.06, barX = W * 0.4, scrX = W * 0.8;
       const cy = H / 2, slitGap = H * 0.13;
@@ -534,11 +589,9 @@
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    const tb = btn(controls, 'Which-path detector: off', () => {
-      watching = !watching;
-      tb.textContent = 'Which-path detector: ' + (watching ? 'on' : 'off');
-      tb.setAttribute('aria-pressed', watching);
-      bins = null; hits = []; nHits = 0;
+    tb = btn(controls, 'Which-path detector: off', () => {
+      lastToggle = st.now();
+      setWatching(!watching);
       st.pulse(6);
     });
     tb.setAttribute('aria-pressed', 'false');
@@ -552,8 +605,15 @@
      ============================================================ */
   function vizBoundary(canvas, controls) {
     let coherence = 1, chosen = Math.random() < 0.5 ? 0 : 1, collisions = 0;
-    let env = [], isolatedUntil = 0;
+    let env = [], isolatedUntil = 0, zeroSince = null;
     const ro = readout(controls);
+
+    function freshSuperposition(t) {
+      coherence = 1; collisions = 0; env = [];
+      chosen = Math.random() < 0.5 ? 0 : 1;
+      isolatedUntil = t + 1.4;
+      zeroSince = null;
+    }
 
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
@@ -622,6 +682,12 @@
       ctx.globalAlpha = 1;
       env = env.filter((p) => p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20);
 
+      // once fully classical, linger, then run the story again
+      if (coherence <= 0.02) {
+        if (zeroSince === null) zeroSince = t;
+        else if (t - zeroSince > 4) freshSuperposition(t);
+      } else zeroSince = null;
+
       ctx.fillStyle = DIM; ctx.font = MONO(10); ctx.textAlign = 'center';
       const label = coherence > 0.65 ? 'ONE OBJECT, TWO PLACES'
         : coherence > 0.15 ? 'THE ENVIRONMENT IS WATCHING…'
@@ -634,9 +700,7 @@
 
     const st = stage(canvas, draw, 16 / 9);
     btn(controls, 'Prepare a fresh superposition', () => {
-      coherence = 1; collisions = 0; env = [];
-      chosen = Math.random() < 0.5 ? 0 : 1;
-      isolatedUntil = st.now() + 1.4;
+      freshSuperposition(st.now());
       st.pulse(4);
     });
     return () => st.destroy();
@@ -648,6 +712,7 @@
      ============================================================ */
   function vizPsi(canvas, controls) {
     let collapse = null;
+    let lastMeasure = 0;
     const dots = [];
     for (let i = 0; i < 260; i++) dots.push({ u: Math.random(), v: Math.random(), tw: rand(0, TAU) });
     const ro = readout(controls);
@@ -671,6 +736,12 @@
       ctx.clearRect(0, 0, W, H);
       const mid = W / 2;
       const base = H * 0.82, top = H * 0.3;
+
+      // measures itself if nobody presses anything
+      if (!collapse && t > 4 && t - lastMeasure > 8) {
+        lastMeasure = t;
+        collapse = { x0: sampleX(t), t0: t };
+      }
 
       let k = 0, x0 = 0.5;
       if (collapse) {
@@ -732,6 +803,7 @@
 
     const st = stage(canvas, draw, 16 / 9);
     btn(controls, 'Measure both', () => {
+      lastMeasure = st.now();
       collapse = { x0: sampleX(st.now()), t0: st.now() };
       ro.textContent = 'LEFT: SOMETHING HAPPENED. RIGHT: YOU JUST LEARNED. WHICH IS TRUE?';
       st.pulse(3.5);
@@ -745,6 +817,7 @@
      ============================================================ */
   function vizInformation(canvas, controls) {
     let inbits = [], outbits = [], swallowed = 0, diary = 0;
+    let lastDiary = 0;
     const DIARY = 'DEAR UNIVERSE, REMEMBER ME';
     const ro = readout(controls);
 
@@ -763,6 +836,9 @@
       ctx.clearRect(0, 0, W, H);
       const bx = W * 0.62, by = H * 0.5;
       const R = Math.min(H * 0.2, 44);
+
+      // a diary falls in on its own every so often
+      if (t > 6 && t - lastDiary > 16) { lastDiary = t; dropDiary(); }
 
       // accretion glow
       const glow = ctx.createRadialGradient(bx, by, R, bx, by, R * 2.6);
@@ -817,14 +893,15 @@
 
     const st = stage(canvas, draw, 16 / 9);
     const timers = [];
-    btn(controls, 'Drop in a diary', () => {
+    function dropDiary() {
       const chars = DIARY.replace(/ /g, '');
       for (let i = 0; i < chars.length; i++) {
         timers.push(setTimeout(() => spawnBit(st.W, st.H, chars[i]), i * 90));
       }
       diary++;
       st.pulse(6);
-    });
+    }
+    btn(controls, 'Drop in a diary', () => { lastDiary = st.now(); dropDiary(); });
     return () => { timers.forEach(clearTimeout); st.destroy(); };
   }
 
@@ -937,7 +1014,7 @@
      Empty space seethes; the prediction misses by 10^120.
      ============================================================ */
   function vizVacuum(canvas, controls) {
-    let pairs = [], born = 0, barK = 0, barPlay = true;
+    let pairs = [], born = 0, barK = 0, barPlay = true, barDoneAt = null;
     const ro = readout(controls);
 
     function draw(ctx, W, H, t, dt) {
@@ -982,6 +1059,11 @@
       const bx = W * 0.72, bw = (W - bx - 20) / 2 - 8;
       const base = H * 0.9;
       if (barPlay) barK = clamp(barK + dt * 0.5, 0, 1);
+      // replay the recount every so often
+      if (barK >= 1) {
+        if (barDoneAt === null) barDoneAt = t;
+        else if (t - barDoneAt > 7) { barK = 0; barDoneAt = null; }
+      }
 
       // observed: a sliver
       ctx.fillStyle = PAPER;
@@ -1018,7 +1100,7 @@
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Recount the modes', () => { barK = 0; st.pulse(3); });
+    btn(controls, 'Recount the modes', () => { barK = 0; barDoneAt = null; st.pulse(3); });
     return () => st.destroy();
   }
 
@@ -1027,10 +1109,16 @@
      Reversible laws, irreversible world. Try running it backwards.
      ============================================================ */
   function vizTime(canvas, controls) {
-    let parts = null, reversals = 0, dir = 1;
+    let parts = null, reversals = 0, dir = 1, lastReverse = 0;
     const N = 110;
     const ro = readout(controls);
     const hist = [];
+
+    function doReverse() {
+      if (!parts) return;
+      for (const p of parts) { p.vx = -p.vx; p.vy = -p.vy; }
+      dir = -dir; reversals++;
+    }
 
     function reset(W, H) {
       parts = [];
@@ -1063,6 +1151,9 @@
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
       if (!parts) reset(W, H);
+
+      // time reverses itself, again and again
+      if (t - lastReverse > 11 && t > 2) { lastReverse = t; doReverse(); }
 
       for (const p of parts) {
         p.x += p.vx * dt; p.y += p.vy * dt;
@@ -1103,12 +1194,11 @@
 
     const st = stage(canvas, draw, 16 / 9);
     btn(controls, 'Reverse every velocity', () => {
-      if (!parts) return;
-      for (const p of parts) { p.vx = -p.vx; p.vy = -p.vy; }
-      dir = -dir; reversals++;
+      lastReverse = st.now();
+      doReverse();
       st.pulse(8);
     });
-    btn(controls, 'Fresh start', () => { parts = null; dir = 1; st.pulse(6); });
+    btn(controls, 'Fresh start', () => { parts = null; dir = 1; lastReverse = st.now(); st.pulse(6); });
     return () => st.destroy();
   }
 

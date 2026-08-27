@@ -37,7 +37,7 @@
       viz: 'duality',
       riddle: 'Send electrons at two slits one at a time: each lands as a single dot, yet the dots slowly build an interference pattern — as if each electron had gone through both slits and interfered with itself. Install a detector to see which slit it used, and the pattern quietly vanishes.',
       stakes: 'Feynman called this the theory’s “only mystery” — a phenomenon that is, in his words, “impossible, absolutely impossible, to explain in any classical way”. Everything else in quantum mechanics is this, wearing different clothes.',
-      caption: 'Particles fired one at a time. Leave them unwatched and fringes appear; switch the which-path detector on and the pattern collapses into two plain bands.',
+      caption: 'Particles fired one at a time. Unwatched, fringes appear; whenever the which-path detector switches on, the pattern collapses into two plain bands.',
     },
     {
       slug: 'boundary',
@@ -103,7 +103,7 @@
       viz: 'time',
       riddle: 'The fundamental laws run equally well forwards and backwards — reverse every velocity and physics raises no objection. Yet eggs break and never unbreak. Entropy explains the one-way street only by assuming the early universe began in an extraordinarily ordered state, and nobody knows why it did.',
       stakes: 'Memory, causation and ageing all hang on an unexplained initial condition. Worse, in quantum gravity the equations suggest time may not be fundamental at all.',
-      caption: 'A gas spreads and its entropy climbs. Press REVERSE: every particle retraces its path and order returns — the laws permit it perfectly. So why does it never happen to you?',
+      caption: 'A gas spreads and its entropy climbs — then time reverses and every particle retraces its path, order returning. The laws permit it perfectly. So why does it never happen to you?',
     },
     {
       slug: 'randomness',
