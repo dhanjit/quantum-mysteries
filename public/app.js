@@ -26,7 +26,7 @@
       viz: 'entanglement',
       riddle: 'Measure one particle of an entangled pair and the other’s state is fixed at once — even if it is on the other side of the galaxy. Einstein dismissed this as “spooky action at a distance”. Bell’s theorem proves the particles cannot merely be carrying a secret agreement made in advance, and half a century of experiments (Nobel Prize, 2022) confirms it.',
       stakes: 'Either something links distant events faster than light (yet uselessly — no message can ride on it), or there are no pre-existing facts for measurements to reveal, or measurements don’t have single outcomes. Each escape route breaks something we thought was bedrock.',
-      caption: 'A pair in superposition drifts apart. Measure either one: both decide together, instantly, and always oppositely. No signal passes between them.',
+      caption: 'Two coins from the same quantum mint drift apart, still spinning — neither has a face yet. Look at either one: both land that instant, and always opposite. No signal passes between them.',
     },
     {
       slug: 'duality',
@@ -92,7 +92,7 @@
       viz: 'vacuum',
       riddle: 'Empty space is not empty: quantum fields can never quite rest, so the vacuum seethes with zero-point energy. Add up the theory’s naïve estimate of that energy and it exceeds the value cosmologists actually measure by up to 120 orders of magnitude. Not off by a factor — off by a number with 120 zeros.',
       stakes: 'The tiny measured leftover is the dark energy accelerating the universe’s expansion. Explaining why the vacuum gravitates almost — but not exactly — zero may take physics beyond both quantum theory and relativity.',
-      caption: 'A box of perfect nothing, seething with virtual pairs. Sum the energy of all that seething and watch the ratio spell itself out: prediction over measurement, a one with up to 120 zeros — built from steps that work everywhere else in physics.',
+      caption: 'A box of perfect nothing, seething with virtual pairs. Put its predicted energy on a scale and it out-weighs every star we can see — a mismatch that spells itself out to 120 zeros, built from steps that work everywhere else in physics.',
     },
     {
       slug: 'time',

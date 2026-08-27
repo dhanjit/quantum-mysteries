@@ -112,10 +112,11 @@
      drawn at random from |ψ|², then it slowly re-spreads.
      ============================================================ */
   function vizMeasurement(canvas, controls) {
+    // slow drift: the glow should breathe, not read as an object travelling
     const modes = [
-      { w: 0.5, c0: 0.34, amp: 0.16, sp: 0.21, ph: rand(0, TAU), sig: 0.085 },
-      { w: 0.34, c0: 0.62, amp: 0.2, sp: 0.16, ph: rand(0, TAU), sig: 0.11 },
-      { w: 0.26, c0: 0.5, amp: 0.24, sp: 0.11, ph: rand(0, TAU), sig: 0.065 },
+      { w: 0.5, c0: 0.34, amp: 0.11, sp: 0.08, ph: rand(0, TAU), sig: 0.085 },
+      { w: 0.34, c0: 0.62, amp: 0.13, sp: 0.06, ph: rand(0, TAU), sig: 0.11 },
+      { w: 0.26, c0: 0.5, amp: 0.16, sp: 0.045, ph: rand(0, TAU), sig: 0.065 },
     ];
     const motes = [];
     for (let i = 0; i < 90; i++) {
@@ -240,12 +241,22 @@
         ctx.globalAlpha = 1;
       }
 
-      // labels
+      // labels + a rotating plain-words explainer
       ctx.fillStyle = DIM;
-      ctx.font = MONO(10);
-      ctx.fillText('PROBABILITY FOG · |ψ(x)|²', 12, Math.max(top - 4, 12));
+      ctx.font = MONO(9);
+      ctx.fillText('PROBABILITY FOG · |ψ(x)|²', 12, H * 0.97);
       if (!collapse) {
+        const LINES = [
+          'THIS GLOW IS ONE PARTICLE — NOT MOVING, JUST SPREAD OUT',
+          'CLICKING = LOOKING. LOOKING FORCES ONE DEFINITE ANSWER',
+          'WHERE YOU FIND IT: PURE CHANCE, WEIGHTED BY THE GLOW',
+        ];
         ctx.textAlign = 'center';
+        ctx.font = MONO(10);
+        ctx.fillStyle = PAPER;
+        ctx.fillText(LINES[Math.floor(t / 4.5) % 3], W / 2, H * 0.07);
+        ctx.fillStyle = DIM;
+        ctx.font = MONO(9);
         ctx.fillText(touchOnly ? 'TAP THE FOG TO LOOK' : 'POINT ANYWHERE — CLICK TO LOOK', W / 2, H * 0.955);
         ctx.textAlign = 'left';
       }
@@ -299,62 +310,65 @@
      fixes both, instantly, every time.
      ============================================================ */
   function vizEntanglement(canvas, controls) {
-    let pair = null, pairs = 0, correlated = 0;
+    let pair = null, pairs = 0, opposite = 0;
     let posA = null, posB = null, lastUser = -99;
     const touchOnly = window.matchMedia('(hover: none)').matches;
     const ro = readout(controls);
     let bA, bB;
 
     function newPair(t) {
-      pair = { born: t, measured: false, mT: 0, sA: 0, sB: 0 };
+      pair = { born: t, measured: false, mT: 0, fA: '', fB: '', ph: rand(0, TAU) };
       if (bA) { bA.disabled = false; bB.disabled = false; }
     }
 
-    function measure(which, t) {
+    function look(which, t) {
       if (!pair || pair.measured) return;
       pair.measured = true;
       pair.mT = t;
-      pair.sA = Math.random() < 0.5 ? 1 : -1;
-      pair.sB = -pair.sA;
+      pair.fA = Math.random() < 0.5 ? 'H' : 'T';
+      pair.fB = pair.fA === 'H' ? 'T' : 'H';
       pair.by = which;
-      pairs++; correlated++;
-      ro.textContent = `PAIRS: ${pairs} · ANTI-CORRELATED: ${correlated}/${pairs} · EVERY TIME`;
+      pairs++; opposite++;
+      ro.textContent = `PAIRS: ${pairs} \u00b7 LANDED OPPOSITE: ${opposite}/${pairs} \u2014 EVERY TIME`;
       bA.disabled = true; bB.disabled = true;
     }
 
-    function drawParticle(ctx, x, y, spin, measured, t, isTrigger) {
+    function drawCoin(ctx, x, y, face, measured, t, isTrigger) {
       ctx.save();
       ctx.translate(x, y);
-      const R = 16;
+      const R = 17;
       if (!measured) {
-        // superposed: both arrows, flickering
-        for (const s of [1, -1]) {
-          const a = 0.28 + 0.18 * Math.sin(t * 7 + s * 2);
-          ctx.globalAlpha = a;
-          arrow(ctx, s, R, PAPER);
-        }
+        // still spinning: no face exists yet
+        const sx = Math.max(Math.abs(Math.cos(t * 4 + pair.ph)), 0.08);
+        ctx.save();
+        ctx.scale(sx, 1);
+        ctx.strokeStyle = PAPER;
+        ctx.lineWidth = 2 / sx;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+        ctx.restore();
+        const f = Math.cos(t * 4 + pair.ph) > 0 ? 'H' : 'T';
+        ctx.globalAlpha = 0.35 * sx;
+        ctx.fillStyle = PAPER;
+        ctx.font = MONO(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(f, 0, 1);
         ctx.globalAlpha = 1;
-        ctx.strokeStyle = DIM;
         ctx.setLineDash([2, 3]);
-        ctx.beginPath(); ctx.arc(0, 0, R + 7, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = DIM; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(0, 0, R + 8, 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
       } else {
-        ctx.globalAlpha = 1;
-        arrow(ctx, spin, R, isTrigger ? GOLD : PH);
-        ctx.strokeStyle = isTrigger ? GOLD : PH;
-        ctx.beginPath(); ctx.arc(0, 0, R + 7, 0, TAU); ctx.stroke();
+        const col = isTrigger ? GOLD : PH;
+        ctx.strokeStyle = col; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+        ctx.fillStyle = col;
+        ctx.font = MONO(16); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(face, 0, 1);
+        ctx.font = MONO(8);
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(face === 'H' ? 'HEADS' : 'TAILS', 0, R + 18);
       }
       ctx.restore();
-    }
-
-    function arrow(ctx, dir, R, color) {
-      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, dir * R); ctx.lineTo(0, -dir * R); ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, -dir * (R + 2));
-      ctx.lineTo(-5, -dir * (R - 7));
-      ctx.lineTo(5, -dir * (R - 7));
-      ctx.closePath(); ctx.fill();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 1;
     }
 
     function draw(ctx, W, H, t) {
@@ -368,7 +382,7 @@
 
       // the experiment demonstrates itself when nobody intervenes
       if (!pair.measured && age > 4 && t - lastUser > 8) {
-        measure(Math.random() < 0.5 ? 'A' : 'B', t);
+        look(Math.random() < 0.5 ? 'A' : 'B', t);
       }
 
       // channel
@@ -380,7 +394,6 @@
       const m = pair.measured;
       if (m) {
         const dt = t - pair.mT;
-        // simultaneous flash at both ends
         if (dt < 0.8) {
           const r = easeOut(dt / 0.8) * 46;
           ctx.globalAlpha = 1 - dt / 0.8;
@@ -390,24 +403,24 @@
           }
           ctx.globalAlpha = 1;
         }
-        if (dt > 2.2) newPair(t);
+        if (dt > 2.6) newPair(t);
       }
 
-      drawParticle(ctx, xA, cy, pair.sA, m, t, pair.by === 'A');
-      drawParticle(ctx, xB, cy, pair.sB, m, t, pair.by === 'B');
+      drawCoin(ctx, xA, cy, pair.fA, m, t, pair.by === 'A');
+      drawCoin(ctx, xB, cy, pair.fB, m, t, pair.by === 'B');
 
-      // distance readout — pretend each pixel is a light-year
       const ly = (sep * 2 + 60) / 10;
       ctx.fillStyle = DIM; ctx.font = MONO(10); ctx.textAlign = 'center';
+      ctx.fillText('TWO COINS FROM THE SAME QUANTUM MINT \u2014 STILL SPINNING', W / 2, H * 0.72);
       ctx.fillText(`SEPARATION: ${ly.toFixed(1)} LIGHT-YEARS (PRETEND)`, W / 2, H * 0.82);
-      ctx.fillText('A', xA, cy + 44);
-      ctx.fillText('B', xB, cy + 44);
-      if (m && t - pair.mT < 2.2) {
+      ctx.fillText('A', xA, cy - 34);
+      ctx.fillText('B', xB, cy - 34);
+      if (m && t - pair.mT < 2.6) {
         ctx.fillStyle = GOLD;
-        ctx.fillText('BOTH DECIDED. NO SIGNAL TRAVELLED.', W / 2, H * 0.14);
+        ctx.fillText('BOTH LANDED. OPPOSITE. NO SIGNAL TRAVELLED.', W / 2, H * 0.14);
       } else if (!m) {
         ctx.fillStyle = DIM;
-        ctx.fillText(touchOnly ? 'TAP A PARTICLE — OR JUST WATCH' : 'CLICK A PARTICLE — OR JUST WATCH', W / 2, H * 0.14);
+        ctx.fillText(touchOnly ? 'TAP A COIN \u2014 OR JUST WATCH' : 'CLICK A COIN \u2014 OR JUST WATCH', W / 2, H * 0.14);
       }
       ctx.textAlign = 'left';
     }
@@ -422,8 +435,8 @@
     const onClick = (e) => {
       if (!pair || pair.measured) return;
       const [x, y] = canvasXY(e);
-      if (near(posA, x, y)) { lastUser = st.now(); measure('A', st.now()); st.pulse(2.5); }
-      else if (near(posB, x, y)) { lastUser = st.now(); measure('B', st.now()); st.pulse(2.5); }
+      if (near(posA, x, y)) { lastUser = st.now(); look('A', st.now()); st.pulse(3); }
+      else if (near(posB, x, y)) { lastUser = st.now(); look('B', st.now()); st.pulse(3); }
     };
     const onMove = (e) => {
       const [x, y] = canvasXY(e);
@@ -433,9 +446,9 @@
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('pointermove', onMove);
 
-    bA = btn(controls, 'Measure A', () => { lastUser = st.now(); measure('A', st.now()); st.pulse(2.5); });
-    bB = btn(controls, 'Measure B', () => { lastUser = st.now(); measure('B', st.now()); st.pulse(2.5); });
-    ro.textContent = 'IT RUNS ITSELF — OR MEASURE A PARTICLE YOURSELF';
+    bA = btn(controls, 'Look at coin A', () => { lastUser = st.now(); look('A', st.now()); st.pulse(3); });
+    bB = btn(controls, 'Look at coin B', () => { lastUser = st.now(); look('B', st.now()); st.pulse(3); });
+    ro.textContent = 'IT RUNS ITSELF \u2014 OR LOOK AT A COIN YOURSELF';
     return () => {
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('pointermove', onMove);
@@ -456,6 +469,7 @@
     let bins = null, nHits = 0;
     let prevBins = null, prevWatching = null;  // ghost of the other regime
     let lastToggle = 0, toggleFlash = -99, contrastAt = null, tb = null;
+    let fast = false;
     const NB = 64;
     const ro = readout(controls);
 
@@ -540,9 +554,10 @@
       ctx.strokeStyle = FAINT;
       ctx.beginPath(); ctx.moveTo(scrX, H * 0.06); ctx.lineTo(scrX, H * 0.94); ctx.stroke();
 
-      // emit
-      if (Math.random() < dt * 14 && flying.length < 26) {
-        flying.push({ p: 0, slit: Math.random() < 0.5 ? 0 : 1, yT: targetY(H), speed: rand(0.55, 0.8) });
+      // emit — briskly; the pattern is the point, not the wait
+      const rate = fast ? 110 : 30;
+      if (Math.random() < dt * rate && flying.length < (fast ? 60 : 40)) {
+        flying.push({ p: 0, slit: Math.random() < 0.5 ? 0 : 1, yT: targetY(H), speed: fast ? rand(1.7, 2.3) : rand(0.9, 1.3) });
       }
 
       // fly
@@ -642,6 +657,13 @@
       st.pulse(6);
     });
     tb.setAttribute('aria-pressed', 'false');
+    const fb = btn(controls, 'Fast-forward: off', () => {
+      fast = !fast;
+      fb.textContent = 'Fast-forward: ' + (fast ? 'on' : 'off');
+      fb.setAttribute('aria-pressed', fast);
+      st.pulse(8);
+    });
+    fb.setAttribute('aria-pressed', 'false');
     btn(controls, 'Clear screen', () => { bins = null; hits = []; nHits = 0; flying = []; prevBins = null; contrastAt = null; st.pulse(6); });
     return () => st.destroy();
   }
@@ -667,6 +689,47 @@
       coherence = 1; collisions = 0; env = [];
       chosen = Math.random() < 0.5 ? 0 : 1;
       stageStart = t; deadSince = null;
+    }
+
+    function objIcon(ctx, x, y, R, kind, alpha) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = PAPER; ctx.fillStyle = PAPER; ctx.lineWidth = 1.2;
+      if (kind === 0) {
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, TAU); ctx.fill();
+      } else if (kind === 1) {
+        for (let k = 0; k < 6; k++) {
+          const a2 = (k / 6) * TAU;
+          ctx.beginPath(); ctx.arc(x + Math.cos(a2) * R * 0.45, y + Math.sin(a2) * R * 0.45, 1.8, 0, TAU); ctx.fill();
+        }
+      } else if (kind === 2) {
+        const pts = [[-0.3, -0.2], [0.25, -0.35], [0.4, 0.15], [-0.1, 0.35], [-0.45, 0.1]];
+        for (const [px2, py2] of pts) {
+          ctx.beginPath(); ctx.arc(x + px2 * R, y + py2 * R, 1.6, 0, TAU); ctx.fill();
+        }
+      } else {
+        // the cat, at last: ears, eyes, whiskers, nose
+        ctx.beginPath();
+        ctx.moveTo(x - R * 0.62, y - R * 0.55);
+        ctx.lineTo(x - R * 0.48, y - R * 1.02);
+        ctx.lineTo(x - R * 0.18, y - R * 0.72);
+        ctx.moveTo(x + R * 0.62, y - R * 0.55);
+        ctx.lineTo(x + R * 0.48, y - R * 1.02);
+        ctx.lineTo(x + R * 0.18, y - R * 0.72);
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(x - R * 0.28, y - R * 0.12, 1.8, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + R * 0.28, y - R * 0.12, 1.8, 0, TAU); ctx.fill();
+        ctx.beginPath();
+        for (const s of [-1, 1]) {
+          for (const wy of [0.12, 0.24]) {
+            ctx.moveTo(x + s * R * 0.18, y + R * wy);
+            ctx.lineTo(x + s * R * 0.85, y + R * (wy - 0.05));
+          }
+        }
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y + R * 0.12, 1.5, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
     }
 
     function draw(ctx, W, H, t, dt) {
@@ -711,6 +774,7 @@
         ctx.globalAlpha = Math.min(1, a + 0.15);
         ctx.strokeStyle = PAPER;
         ctx.beginPath(); ctx.arc(xs[i], cy, R, 0, TAU); ctx.stroke();
+        objIcon(ctx, xs[i], cy, R, si, Math.min(1, a + 0.15));
       }
       ctx.globalAlpha = 1;
 
@@ -831,11 +895,16 @@
       ctx.beginPath(); ctx.moveTo(mid, H * 0.08); ctx.lineTo(mid, H * 0.92); ctx.stroke();
 
       ctx.font = MONO(10); ctx.textAlign = 'center';
-      ctx.fillStyle = PH; ctx.fillText('ψ AS A THING', mid / 2, H * 0.12);
-      ctx.fillStyle = GOLD; ctx.fillText('ψ AS KNOWLEDGE', mid + mid / 2, H * 0.12);
+      ctx.fillStyle = PAPER;
+      ctx.fillText('ONE WAVE, TWO STORIES — NOBODY KNOWS WHICH IS TRUE', mid, H * 0.045);
+      ctx.fillStyle = PH; ctx.fillText('STORY 1 — ψ IS A REAL THING', mid / 2, H * 0.12);
+      ctx.fillStyle = GOLD; ctx.fillText('STORY 2 — ψ IS ONLY WHAT WE KNOW', mid + mid / 2, H * 0.12);
+      ctx.font = MONO(9);
       ctx.fillStyle = DIM;
-      ctx.fillText('a field that must physically jump', mid / 2, H * 0.95);
-      ctx.fillText('a guess that simply updates', mid + mid / 2, H * 0.95);
+      ctx.fillText('a ghostly field, really out there', mid / 2, H * 0.12 + 14);
+      ctx.fillText('a ledger of our ignorance', mid + mid / 2, H * 0.12 + 14);
+      ctx.fillText('to change, it must physically jump', mid / 2, H * 0.95);
+      ctx.fillText('to change, you only need to learn', mid + mid / 2, H * 0.95);
       ctx.textAlign = 'left';
 
       // LEFT: ontic ribbon
@@ -1218,46 +1287,47 @@
       ctx.globalAlpha = 1;
       pairs = pairs.filter((p) => p.t < p.life);
 
-      // the two bars
-      const bx = W * 0.72, bw = (W - bx - 20) / 2 - 8;
-      const base = H * 0.9;
-      if (barPlay) barK = clamp(barK + dt * 0.5, 0, 1);
-      // once the bar tops out, spell the ratio out digit by digit, then replay
+      // the scales: a thimble of predicted nothing outweighs everything we see
+      if (barPlay) barK = clamp(barK + dt * 0.35, 0, 1);
       if (barK >= 1) {
         zeros = clamp(zeros + dt * 16, 0, 120);
         if (barDoneAt === null) barDoneAt = t;
         else if (t - barDoneAt > 12) { barK = 0; barDoneAt = null; zeros = 0; }
       }
+      const fx = W * 0.83, fy = H * 0.62;
+      const tilt = easeOut(barK) * 0.34;
+      const beamL = W * 0.125;
 
-      // observed: a sliver
-      ctx.fillStyle = PAPER;
-      ctx.fillRect(bx, base - 3, bw, 3);
-      ctx.font = MONO(9); ctx.fillStyle = DIM; ctx.textAlign = 'center';
-      ctx.fillText('OBSERVED', bx + bw / 2, base + 14);
-      ctx.fillText('Λ (dark energy)', bx + bw / 2, base + 26);
+      // fulcrum
+      ctx.strokeStyle = PAPER;
+      ctx.beginPath();
+      ctx.moveTo(fx, fy); ctx.lineTo(fx - 9, fy + 16); ctx.lineTo(fx + 9, fy + 16);
+      ctx.closePath(); ctx.stroke();
 
-      // predicted: leaves the chart
-      const px = bx + bw + 16;
-      const ph = easeOut(barK) * (base - H * 0.04);
-      ctx.fillStyle = GOLD;
-      ctx.globalAlpha = 0.85;
-      ctx.fillRect(px, base - ph, bw, ph);
-      ctx.globalAlpha = 1;
-      if (barK > 0.97) {
-        // break marks: it keeps going
-        ctx.strokeStyle = '#05070c'; ctx.lineWidth = 3;
-        for (const yy of [H * 0.12, H * 0.2]) {
-          ctx.beginPath();
-          ctx.moveTo(px - 4, yy + 4); ctx.lineTo(px + bw + 4, yy - 4);
-          ctx.stroke();
-        }
-        ctx.lineWidth = 1;
-        ctx.fillStyle = GOLD;
-        ctx.fillText('↑ ×10¹²⁰', px + bw / 2, H * 0.08);
+      // beam — predicted side (left) sinks
+      const lx2 = fx - Math.cos(tilt) * beamL, ly2 = fy + Math.sin(tilt) * beamL;
+      const rx2 = fx + Math.cos(tilt) * beamL, ry2 = fy - Math.sin(tilt) * beamL;
+      ctx.beginPath(); ctx.moveTo(lx2, ly2); ctx.lineTo(rx2, ry2); ctx.stroke();
+
+      // left pan: the thimble of nothing
+      ctx.beginPath(); ctx.moveTo(lx2, ly2); ctx.lineTo(lx2, ly2 + 14); ctx.stroke();
+      ctx.strokeRect(lx2 - 7, ly2 + 14, 14, 11);
+      ctx.font = MONO(8); ctx.textAlign = 'center'; ctx.fillStyle = GOLD;
+      ctx.fillText('A THIMBLE OF NOTHING', lx2, ly2 + 40);
+      ctx.fillStyle = DIM;
+      ctx.fillText('(ITS PREDICTED ENERGY)', lx2, ly2 + 51);
+
+      // right pan: everything we can see
+      ctx.strokeStyle = PAPER;
+      ctx.beginPath(); ctx.moveTo(rx2, ry2); ctx.lineTo(rx2, ry2 + 14); ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const sxx = rx2 - 10 + i * 10, syy = ry2 + 20 + (i % 2) * 5;
+        ctx.beginPath(); ctx.moveTo(sxx - 3, syy); ctx.lineTo(sxx + 3, syy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sxx, syy - 3); ctx.lineTo(sxx, syy + 3); ctx.stroke();
       }
       ctx.fillStyle = DIM;
-      ctx.fillText('PREDICTED', px + bw / 2, base + 14);
-      ctx.fillText('(QFT naïve sum)', px + bw / 2, base + 26);
+      ctx.fillText('EVERY STAR', rx2, ry2 + 40);
+      ctx.fillText('WE CAN SEE', rx2, ry2 + 51);
       ctx.textAlign = 'left';
 
       // the ratio, spelling itself out
@@ -1278,7 +1348,7 @@
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Recount the modes', () => { barK = 0; barDoneAt = null; zeros = 0; st.pulse(3); });
+    btn(controls, 'Weigh it again', () => { barK = 0; barDoneAt = null; zeros = 0; st.pulse(5); });
     return () => st.destroy();
   }
 
