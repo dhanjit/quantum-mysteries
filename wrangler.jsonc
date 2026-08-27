@@ -7,7 +7,7 @@
   },
   "routes": [
     {
-      "pattern": "quantummysteries.dhanjit.me",
+      "pattern": "quantum-mysteries.dhanjit.me",
       "custom_domain": true
     }
   ]

@@ -1,6 +1,6 @@
 # Quantum Mysteries
 
-**An atlas of the unsolved** — [quantummysteries.dhanjit.me](https://quantummysteries.dhanjit.me)
+**An atlas of the unsolved** — [quantum-mysteries.dhanjit.me](https://quantum-mysteries.dhanjit.me)
 
 The deepest open problems of quantum physics, presented as an emission spectrum
 of an unknown element. Each spectral line is a mystery; each mystery opens a
