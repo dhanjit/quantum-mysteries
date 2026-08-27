@@ -37,7 +37,7 @@
       viz: 'duality',
       riddle: 'Send electrons at two slits one at a time: each lands as a single dot, yet the dots slowly build an interference pattern — as if each electron had gone through both slits and interfered with itself. Install a detector to see which slit it used, and the pattern quietly vanishes.',
       stakes: 'Feynman called this the theory’s “only mystery” — a phenomenon that is, in his words, “impossible, absolutely impossible, to explain in any classical way”. Everything else in quantum mechanics is this, wearing different clothes.',
-      caption: 'Particles fired one at a time. Unwatched, fringes appear; whenever the which-path detector switches on, the pattern collapses into two plain bands.',
+      caption: 'Particles fired one at a time. Unwatched, they build wave fringes; watched, the same apparatus writes two plain bands — the ghost of the other pattern stays on screen so both facts face each other. The only difference: could the path be known?',
     },
     {
       slug: 'boundary',
@@ -48,7 +48,7 @@
       viz: 'boundary',
       riddle: 'Electrons superpose; tables and cats apparently don’t. Decoherence explains why big superpositions become impossible to see — the environment “measures” everything, constantly — but not why one definite outcome becomes real. Meanwhile experiments keep putting ever larger objects, now molecules beyond 25,000 atomic mass units, into superposition. No edge has ever been found.',
       stakes: 'If there is no boundary, then the universe as a whole — including you — has a wavefunction. If there is one, something unknown to physics draws the line.',
-      caption: 'One object in two places. Stray particles scatter off it and its coherence drains away — it looks classical, and mere isolation cannot bring it back. Prepare a fresh superposition and the two places return.',
+      caption: 'The same trick at four sizes: an electron holds its two places as long as the world is kept out; a molecule loses them in moments; a dust grain instantly; a cat never begins. The laws are identical at every size — no edge has ever been found.',
     },
     {
       slug: 'psi',
@@ -59,7 +59,7 @@
       viz: 'psi',
       riddle: 'Is ψ a physical object, like a field — or a summary of what we know, like a probability in a betting book? The PBR theorem (2012) showed that if a system has any objective state at all, ψ must be part of it. Yet the wavefunction of two particles doesn’t live in ordinary space — it lives in an abstract space of six dimensions, and it grows with every particle you add.',
       stakes: 'This decides what quantum theory is even about: whether physics describes the world itself, or only our information about it.',
-      caption: 'The same ψ drawn twice. Measure: on the left something physically snaps; on the right a mind merely updates. The mathematics cannot tell you which picture is true.',
+      caption: 'The same ψ drawn twice. At each measurement the left story needs a field to snap everywhere at once; the right needs only a change of mind. Same event, two stories — the mathematics cannot say which one happened.',
     },
     {
       slug: 'information',
@@ -70,7 +70,7 @@
       viz: 'information',
       riddle: 'Quantum mechanics forbids information from being destroyed — ever. Yet apply quantum field theory to the curved spacetime of general relativity and Hawking’s calculation says black holes evaporate into featureless thermal radiation, carrying no memory of what fell in. When the black hole is gone, where did everything go?',
       stakes: 'One of our two best theories must give ground. Recent “island” calculations hint that the information does escape in the radiation — but no one can yet say how it gets out.',
-      caption: 'Structure falls in; static leaks out. Drop in a diary and watch the horizon eat it. The radiation that will one day replace this black hole remembers nothing — or does it?',
+      caption: 'Structure falls in; featureless heat leaks out; the hole shrinks and finally vanishes. Watch to the end: every bit that fell in is missing from the books — QM forbids that, so either the bits sneak out in the static (nobody can show how) or physics loses its memory.',
     },
     {
       slug: 'gravity',
@@ -81,7 +81,7 @@
       viz: 'gravity',
       riddle: 'Every force in nature has a quantum description — except gravity. Treat Einstein’s spacetime like the other fields and the calculation drowns in infinities. Strings, loops and holography all compete to fix it, and no experiment can referee: quantum gravity lives near the Planck scale, roughly 10¹⁵ times beyond the reach of our best collider.',
       stakes: 'Whatever resolves it will say what spacetime actually is — possibly not fundamental at all, but woven out of something else, perhaps entanglement itself.',
-      caption: 'Relativity’s spacetime is a smooth fabric. Move the lens: at 10⁻³⁵ metres the same fabric may boil into foam. Nobody has ever seen this scale. The foam is a guess.',
+      caption: 'One particle, two rulebooks. Outside the lens it rides one smooth spacetime; inside, the spacetime beneath it refuses to be one shape, and its path frays with it. The rulebooks clash exactly here — and no experiment can yet see which gives.',
     },
     {
       slug: 'vacuum',
@@ -92,7 +92,7 @@
       viz: 'vacuum',
       riddle: 'Empty space is not empty: quantum fields can never quite rest, so the vacuum seethes with zero-point energy. Add up the theory’s naïve estimate of that energy and it exceeds the value cosmologists actually measure by up to 120 orders of magnitude. Not off by a factor — off by a number with 120 zeros.',
       stakes: 'The tiny measured leftover is the dark energy accelerating the universe’s expansion. Explaining why the vacuum gravitates almost — but not exactly — zero may take physics beyond both quantum theory and relativity.',
-      caption: 'A box of perfect nothing, seething with virtual pairs. On the right, prediction versus observation. The gold bar leaves the chart by a factor of 10¹²⁰.',
+      caption: 'A box of perfect nothing, seething with virtual pairs. Sum the energy of all that seething and watch the ratio spell itself out: prediction over measurement, a one with up to 120 zeros — built from steps that work everywhere else in physics.',
     },
     {
       slug: 'time',
@@ -101,7 +101,7 @@
       teaser: 'The laws don’t know past from future. We do.',
       nm: 615, // orange
       viz: 'time',
-      riddle: 'The fundamental laws run equally well forwards and backwards — reverse every velocity and physics raises no objection. Yet eggs break and never unbreak. Entropy explains the one-way street only by assuming the early universe began in an extraordinarily ordered state, and nobody knows why it did.',
+      riddle: 'The fundamental laws run backwards almost as happily as forwards — the one tiny known exception, in the weak force, cannot explain eggs. Reverse every velocity and physics raises no objection; yet eggs break and never unbreak. Entropy explains the one-way street only by assuming the early universe began in an extraordinarily ordered state, and nobody knows why it did.',
       stakes: 'Memory, causation and ageing all hang on an unexplained initial condition. Worse, in quantum gravity the equations suggest time may not be fundamental at all.',
       caption: 'A gas spreads and its entropy climbs — then time reverses and every particle retraces its path, order returning. The laws permit it perfectly. So why does it never happen to you?',
     },
@@ -114,7 +114,7 @@
       viz: 'randomness',
       riddle: 'Quantum outcomes look irreducibly random, and Bell-test experiments rule out any local, pre-written script for them. But loopholes of principle remain: superdeterminism, many-worlds and pilot-wave theory each restore determinism — at the price of abandoning free experimental choice, single outcomes, or locality.',
       stakes: 'Whether the universe is deterministic — whether anything, anywhere, ever truly happens by chance — remains open after a century of quantum mechanics.',
-      caption: 'A Bell test, live. Any pre-arranged local script caps the correlation S at 2. The needle settles at 2√2 ≈ 2.83. The bits below have no pattern — as far as anyone can prove.',
+      caption: 'A Bell test, live. Any local pre-written script is walled in at S = 2 — watch the needle break that wall and settle at 2√2 ≈ 2.83. The bits below have no pattern, and nothing we know of decides them.',
     },
   ];
 

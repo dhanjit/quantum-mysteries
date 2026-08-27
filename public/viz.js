@@ -451,25 +451,29 @@
      ============================================================ */
   function vizDuality(canvas, controls) {
     let watching = false;
-    let flying = [];   // {p: 0..1, slit, y0, yT, jx}
+    let flying = [];   // {p: 0..1, slit, yT, speed}
     let hits = [];     // {y, age}
     let bins = null, nHits = 0;
-    let lastToggle = 0, tb = null;
+    let prevBins = null, prevWatching = null;  // ghost of the other regime
+    let lastToggle = 0, toggleFlash = -99, contrastAt = null, tb = null;
     const NB = 64;
     const ro = readout(controls);
 
-    function setWatching(w) {
+    function setWatching(w, t) {
+      if (bins && nHits > 40) { prevBins = bins; prevWatching = watching; }
       watching = w;
+      // a ghost that matches the live regime is no contrast at all
+      if (prevBins && prevWatching === watching) prevBins = null;
       if (tb) {
         tb.textContent = 'Which-path detector: ' + (watching ? 'on' : 'off');
         tb.setAttribute('aria-pressed', watching);
       }
-      bins = null; hits = []; nHits = 0;
+      bins = null; hits = []; nHits = 0; flying = [];
+      toggleFlash = t; contrastAt = null;
     }
 
     function targetY(H) {
       const cy = H / 2, envA = H * 0.30;
-      // rejection-sample from the appropriate distribution
       for (let i = 0; i < 60; i++) {
         const y = rand(H * 0.08, H * 0.92);
         const u = (y - cy) / envA;
@@ -491,7 +495,7 @@
       ctx.clearRect(0, 0, W, H);
 
       // the detector switches itself so the lesson plays out unattended
-      if (t - lastToggle > 16 && t > 1) { lastToggle = t; setWatching(!watching); }
+      if (t - lastToggle > 16 && t > 1) { lastToggle = t; setWatching(!watching, t); }
 
       if (!bins) bins = new Float32Array(NB);
       const srcX = W * 0.06, barX = W * 0.4, scrX = W * 0.8;
@@ -504,6 +508,7 @@
       ctx.fillStyle = DIM; ctx.font = MONO(9);
       ctx.textAlign = 'center';
       ctx.fillText('SOURCE', srcX, cy + 22);
+      ctx.fillText('ONE AT A TIME', srcX + 26, cy + 34);
       ctx.fillText('SCREEN', scrX, H * 0.055);
       ctx.textAlign = 'left';
 
@@ -525,7 +530,10 @@
           ctx.fillStyle = GOLD; ctx.fill();
         }
         ctx.fillStyle = GOLD; ctx.font = MONO(9);
-        ctx.fillText('DETECTORS ON', barX + 24, H * 0.09);
+        ctx.fillText('DETECTORS ON — THE PATH CAN BE KNOWN', barX + 24, H * 0.09);
+      } else {
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('NOBODY WATCHING — THE PATH CANNOT BE KNOWN', barX + 24, H * 0.09);
       }
 
       // screen
@@ -569,11 +577,11 @@
         h.age += dt;
         ctx.fillStyle = PH;
         ctx.globalAlpha = clamp(0.85 - h.age * 0.02, 0.25, 0.85);
-        ctx.fillRect(scrX + rand(0, 0) + 2, h.y, 2, 2);
+        ctx.fillRect(scrX + 2, h.y, 2, 2);
       }
       ctx.globalAlpha = 1;
 
-      // histogram right of screen
+      // current histogram, solid
       let bmax = 1;
       for (const v of bins) if (v > bmax) bmax = v;
       const hw = W - scrX - 14;
@@ -585,17 +593,56 @@
       }
       ctx.globalAlpha = 1;
 
-      ro.textContent = `PARTICLES DETECTED: ${nHits} · SENT ONE AT A TIME`;
+      // ghost of the OTHER regime — both facts on screen at once
+      if (prevBins) {
+        let pmax = 1;
+        for (const v of prevBins) if (v > pmax) pmax = v;
+        ctx.strokeStyle = prevWatching ? GOLD : PAPER;
+        ctx.globalAlpha = 0.55;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        for (let i = 0; i < NB; i++) {
+          const x = scrX + 6 + (prevBins[i] / pmax) * hw;
+          const y = ((i + 0.5) / NB) * H;
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.font = MONO(8); ctx.textAlign = 'right';
+        ctx.fillStyle = PH;
+        ctx.fillText(watching ? 'NOW: TWO BANDS' : 'NOW: FRINGES', W - 8, H * 0.045);
+        ctx.fillStyle = prevWatching ? GOLD : PAPER;
+        ctx.fillText(prevWatching ? 'BEFORE: WATCHED' : 'BEFORE: UNWATCHED', W - 8, H * 0.045 + 12);
+        ctx.textAlign = 'left';
+      }
+
+      // brief cue at the switch itself
+      if (t - toggleFlash < 2.2) {
+        ctx.fillStyle = DIM; ctx.font = MONO(10); ctx.textAlign = 'center';
+        ctx.fillText(watching ? 'DETECTOR ON — STARTING OVER' : 'DETECTOR OFF — STARTING OVER', W / 2, H * 0.965);
+        ctx.textAlign = 'left';
+      }
+
+      // the paradox line waits until the contrast is actually on screen
+      if (prevBins && contrastAt === null && nHits > 120) contrastAt = t;
+      if (contrastAt !== null && t - contrastAt < 7) {
+        ctx.fillStyle = GOLD; ctx.font = MONO(10); ctx.textAlign = 'center';
+        ctx.fillText('SAME SLITS. SAME PARTICLES. ONLY DIFFERENCE: COULD THE PATH BE KNOWN?', W / 2, H * 0.965);
+        ctx.textAlign = 'left';
+      }
+
+      ro.textContent = `DETECTED: ${nHits} · EACH ARRIVED ALONE — YET THEY CONSPIRE`;
     }
 
     const st = stage(canvas, draw, 16 / 9);
     tb = btn(controls, 'Which-path detector: off', () => {
       lastToggle = st.now();
-      setWatching(!watching);
+      setWatching(!watching, st.now());
       st.pulse(6);
     });
     tb.setAttribute('aria-pressed', 'false');
-    btn(controls, 'Clear screen', () => { bins = null; hits = []; nHits = 0; st.pulse(6); });
+    btn(controls, 'Clear screen', () => { bins = null; hits = []; nHits = 0; flying = []; prevBins = null; contrastAt = null; st.pulse(6); });
     return () => st.destroy();
   }
 
@@ -604,26 +651,44 @@
      One object in two places. The environment keeps looking.
      ============================================================ */
   function vizBoundary(canvas, controls) {
-    let coherence = 1, chosen = Math.random() < 0.5 ? 0 : 1, collisions = 0;
-    let env = [], isolatedUntil = 0, zeroSince = null;
+    // same rules at every size — only the bookkeeping changes
+    const STAGES = [
+      { name: 'AN ELECTRON',    R: 10, rate: 5,  hitCost: 0,     dur: 7,  life: 'AS LONG AS YOU KEEP THE WORLD OUT' },
+      { name: 'A C\u2086\u2080 MOLECULE', R: 16, rate: 18, hitCost: 0.012, dur: 10, life: 'MILLISECONDS, IN HIGH VACUUM (SLOWED)' },
+      { name: 'A DUST GRAIN',   R: 24, rate: 36, hitCost: 0.05,  dur: 8,  life: '10\u207b\u00b3\u00b9 s IN AIR (SLOWED)' },
+      { name: 'A CAT',          R: 34, rate: 80, hitCost: 0.22,  dur: 6,  life: 'IT NEVER EVEN BEGINS' },
+    ];
+    let si = 0, coherence = 1, chosen = Math.random() < 0.5 ? 0 : 1, collisions = 0;
+    let env = [], stageStart = 0, deadSince = null;
     const ro = readout(controls);
 
-    function freshSuperposition(t) {
+    function startStage(i, t) {
+      si = ((i % STAGES.length) + STAGES.length) % STAGES.length;
       coherence = 1; collisions = 0; env = [];
       chosen = Math.random() < 0.5 ? 0 : 1;
-      isolatedUntil = t + 1.4;
-      zeroSince = null;
+      stageStart = t; deadSince = null;
     }
 
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
-      const cy = H * 0.5, R = Math.min(H * 0.16, 34);
+      const S = STAGES[si];
+      const cy = H * 0.52, R = Math.min(H * 0.16, S.R);
       const xs = [W * 0.36, W * 0.64];
+      const age = t - stageStart;
 
-      // interference fringes between the two positions, ∝ coherence
+      // the ladder climbs itself — and never stalls
+      if (S.hitCost === 0 && age > S.dur) startStage(si + 1, t);
+      if (S.hitCost > 0 && age > S.dur && coherence > 0.02) {
+        coherence = Math.max(0, coherence - dt * 0.5);
+      }
+      if (coherence <= 0.02) {
+        if (deadSince === null) deadSince = t;
+        else if (t - deadSince > 3.2) startStage(si + 1, t);
+      }
+
+      // interference fringes between the two positions, \u221d coherence
       if (coherence > 0.02) {
         ctx.save();
-        ctx.globalAlpha = coherence * 0.35;
         for (let x = xs[0] - R; x <= xs[1] + R; x += 7) {
           const v = Math.cos((x - xs[0]) * 0.24 + t * 1.4) ** 2;
           ctx.fillStyle = PH;
@@ -631,6 +696,7 @@
           ctx.fillRect(x, cy - R * 1.5, 2.4, R * 3);
         }
         ctx.restore();
+        ctx.globalAlpha = 1;
       }
 
       // the object, in superposition
@@ -648,12 +714,11 @@
       }
       ctx.globalAlpha = 1;
 
-      // environment particles
-      const isolated = t < isolatedUntil;
-      if (!isolated && Math.random() < dt * 26 && env.length < 60) {
+      // environment particles — the constant, unavoidable audience
+      if (Math.random() < dt * S.rate && env.length < 110) {
         const side = Math.floor(rand(0, 4));
         let x, y, vx, vy;
-        const s = rand(40, 90);
+        const s = rand(40, 95);
         if (side === 0) { x = -5; y = rand(0, H); vx = s; vy = rand(-20, 20); }
         else if (side === 1) { x = W + 5; y = rand(0, H); vx = -s; vy = rand(-20, 20); }
         else if (side === 2) { x = rand(0, W); y = -5; vx = rand(-20, 20); vy = s; }
@@ -662,47 +727,46 @@
       }
       for (const p of env) {
         p.x += p.vx * dt; p.y += p.vy * dt;
-        if (!p.hit) {
+        if (!p.hit && S.hitCost > 0) {
           for (let i = 0; i < 2; i++) {
             const dx = p.x - xs[i], dy = p.y - cy;
             if (dx * dx + dy * dy < R * R) {
               p.hit = true;
-              // scatter
               const ang = Math.atan2(dy, dx) + rand(-0.6, 0.6);
               const sp = Math.hypot(p.vx, p.vy);
               p.vx = Math.cos(ang) * sp; p.vy = Math.sin(ang) * sp;
-              if (coherence > 0) { coherence = Math.max(0, coherence - 0.012); collisions++; }
+              if (coherence > 0) { coherence = Math.max(0, coherence - S.hitCost); collisions++; }
             }
           }
         }
         ctx.fillStyle = p.hit ? GOLD : DIM;
-        ctx.globalAlpha = p.hit ? 0.9 : 0.55;
+        ctx.globalAlpha = p.hit ? 0.9 : 0.5;
         ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, TAU); ctx.fill();
       }
       ctx.globalAlpha = 1;
       env = env.filter((p) => p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20);
 
-      // once fully classical, linger, then run the story again
-      if (coherence <= 0.02) {
-        if (zeroSince === null) zeroSince = t;
-        else if (t - zeroSince > 4) freshSuperposition(t);
-      } else zeroSince = null;
-
-      ctx.fillStyle = DIM; ctx.font = MONO(10); ctx.textAlign = 'center';
-      const label = coherence > 0.65 ? 'ONE OBJECT, TWO PLACES'
-        : coherence > 0.15 ? 'THE ENVIRONMENT IS WATCHING…'
-        : 'LOOKS CLASSICAL NOW. BUT WHY THIS ONE?';
-      ctx.fillText(label, W / 2, H * 0.09);
+      // story labels
+      ctx.font = MONO(10); ctx.textAlign = 'center';
+      ctx.fillStyle = PAPER;
+      ctx.fillText(S.name + ' \u2014 IN TWO PLACES AT ONCE', W / 2, H * 0.08);
+      ctx.fillStyle = DIM;
+      const line = S.hitCost === 0
+        ? 'ALMOST NOTHING TOUCHES IT \u2014 AND WHAT DOES, LEARNS ALMOST NOTHING'
+        : coherence > 0.65 ? 'EVERY STRAY PARTICLE THAT TOUCHES IT CARRIES THE SECRET AWAY\u2026'
+        : coherence > 0.05 ? 'THE WORLD IS FINDING OUT WHERE IT IS'
+        : 'GONE CLASSICAL. NOTHING CHOSE THIS SIDE \u2014 SO WHY THIS ONE?';
+      ctx.fillText(line, W / 2, H * 0.08 + 16);
+      ctx.fillStyle = GOLD;
+      ctx.fillText('SAME LAWS AT EVERY SIZE \u2014 NO EDGE HAS EVER BEEN FOUND', W / 2, H * 0.96);
       ctx.textAlign = 'left';
 
-      ro.textContent = `COHERENCE: ${(coherence * 100).toFixed(0)}% · STRAY COLLISIONS: ${collisions}`;
+      ro.textContent = `OBJECT: ${S.name} \u00b7 COHERENCE ${(coherence * 100).toFixed(0)}% \u00b7 SURVIVES: ${S.life}`;
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Prepare a fresh superposition', () => {
-      freshSuperposition(st.now());
-      st.pulse(4);
-    });
+    btn(controls, 'Bigger object', () => { startStage(si + 1, st.now()); st.pulse(7); });
+    btn(controls, 'Fresh superposition', () => { startStage(si, st.now()); st.pulse(7); });
     return () => st.destroy();
   }
 
@@ -743,7 +807,10 @@
         collapse = { x0: sampleX(t), t0: t };
       }
 
-      let k = 0, x0 = 0.5;
+      // k drives the left (ontic) story: an eased, physical snap.
+      // kR drives the right (epistemic) story: no process at all — one frame
+      // you believed the spread, the next frame you know the point.
+      let k = 0, kR = 0, x0 = 0.5;
       if (collapse) {
         const dt = t - collapse.t0;
         x0 = collapse.x0;
@@ -751,6 +818,7 @@
         else if (dt < 1.4) k = 1;
         else if (dt < 3) k = 1 - easeOut((dt - 1.4) / 1.6);
         else collapse = null;
+        if (collapse) kR = dt < 1.4 ? (dt > 0.15 ? 1 : 0) : k;
       }
 
       function blended(x) {
@@ -786,8 +854,8 @@
       // RIGHT: epistemic cloud — density of belief
       for (const d of dots) {
         const x = d.u;
-        const ph = k > 0 ?
-          lerp(clamp(p(x, t), 0, 1), Math.abs(x - x0) < 0.03 ? 1 : 0, k) :
+        const ph = kR > 0 ?
+          lerp(clamp(p(x, t), 0, 1), Math.abs(x - x0) < 0.03 ? 1 : 0, kR) :
           clamp(p(x, t), 0, 1);
         const px = mid + 15 + x * LW;
         // vertical scatter within the envelope
@@ -799,6 +867,27 @@
         ctx.fillRect(px, py, 1.6, 1.6);
       }
       ctx.globalAlpha = 1;
+
+      // the same event, told two ways — said out loud while it happens
+      if (k > 0.25 && collapse) {
+        const cdt = t - collapse.t0;
+        if (cdt < 0.9) {
+          const leftX = 15 + x0 * LW, ringY = base - (base - top) * 0.6;
+          ctx.strokeStyle = PH;
+          ctx.globalAlpha = (1 - cdt / 0.9) * 0.8;
+          ctx.beginPath(); ctx.arc(leftX, ringY, 6 + easeOut(cdt / 0.9) * 40, 0, TAU); ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.textAlign = 'center'; ctx.font = MONO(9);
+        ctx.fillStyle = PH;
+        ctx.fillText('THE FIELD SNAPPED — EVERYWHERE AT ONCE', mid / 2, H * 0.2);
+        ctx.fillStyle = GOLD;
+        ctx.fillText('NOTHING MOVED — A MIND UPDATED', mid + mid / 2, H * 0.2);
+        ctx.font = MONO(11);
+        ctx.fillStyle = PAPER;
+        ctx.fillText('SAME EVENT — WHICH STORY IS TRUE?', mid, H * 0.24);
+        ctx.textAlign = 'left';
+      }
     }
 
     const st = stage(canvas, draw, 16 / 9);
@@ -816,8 +905,9 @@
      Structured bits fall in; featureless static leaks out.
      ============================================================ */
   function vizInformation(canvas, controls) {
-    let inbits = [], outbits = [], swallowed = 0, diary = 0;
-    let lastDiary = 0;
+    let inbits = [], outbits = [], swallowed = 0;
+    let lastDiary = 0, cycleStart = 0, curR = 44;
+    const CYCLE = 30, AFTER = 5;
     const DIARY = 'DEAR UNIVERSE, REMEMBER ME';
     const ro = readout(controls);
 
@@ -835,46 +925,75 @@
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
       const bx = W * 0.62, by = H * 0.5;
-      const R = Math.min(H * 0.2, 44);
+      const age = t - cycleStart;
+      const Rmax = Math.min(H * 0.2, 44);
+      const evapK = clamp(age / CYCLE, 0, 1);
+      const R = Math.max(Rmax * Math.sqrt(1 - evapK), 0);
+      curR = R;
+      const terminal = age >= CYCLE;
 
-      // a diary falls in on its own every so often
-      if (t > 6 && t - lastDiary > 16) { lastDiary = t; dropDiary(); }
+      if (age > CYCLE + AFTER) { cycleStart = t; swallowed = 0; inbits = []; outbits = []; return; }
 
-      // accretion glow
-      const glow = ctx.createRadialGradient(bx, by, R, bx, by, R * 2.6);
-      glow.addColorStop(0, 'rgba(232,184,75,0.28)');
-      glow.addColorStop(1, 'rgba(232,184,75,0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(bx, by, R * 2.6, 0, TAU); ctx.fill();
+      if (!terminal) {
+        // accretion glow, hotter as it shrinks
+        const glow = ctx.createRadialGradient(bx, by, R, bx, by, R * 2.6 + 8);
+        glow.addColorStop(0, `rgba(232,184,75,${0.22 + 0.3 * evapK})`);
+        glow.addColorStop(1, 'rgba(232,184,75,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(bx, by, R * 2.6 + 8, 0, TAU); ctx.fill();
 
-      // horizon
-      ctx.fillStyle = '#000';
-      ctx.beginPath(); ctx.arc(bx, by, R, 0, TAU); ctx.fill();
-      ctx.strokeStyle = GOLD;
-      ctx.globalAlpha = 0.8;
-      ctx.beginPath(); ctx.arc(bx, by, R + 1.5, 0, TAU); ctx.stroke();
-      ctx.globalAlpha = 1;
+        // horizon
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(bx, by, R, 0, TAU); ctx.fill();
+        ctx.strokeStyle = GOLD;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath(); ctx.arc(bx, by, R + 1.5, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
 
-      // infalling structured bits — spiral in
-      if (Math.random() < dt * 9 && inbits.length < 70) spawnBit(W, H);
-      ctx.font = MONO(11);
-      for (const b of inbits) {
-        b.r -= b.sp * dt * (28 + 3200 / (b.r + 24));
-        b.ang += dt * (0.35 + 120 / (b.r + 30));
-        const x = b.bx + Math.cos(b.ang) * b.r;
-        const y = b.by + Math.sin(b.ang) * b.r * 0.72;
-        if (b.r <= R * 0.9) { swallowed++; continue; }
-        ctx.fillStyle = b.isDiary ? GOLD : PH;
-        ctx.globalAlpha = clamp(0.9 - (b.r / (W * 0.5)) * 0.3, 0.35, 0.95);
-        ctx.fillText(b.ch, x, y);
+        // infalling structured bits
+        if (Math.random() < dt * 9 && inbits.length < 70) spawnBit(W, H);
+        ctx.font = MONO(11);
+        for (const b of inbits) {
+          b.r -= b.sp * dt * (28 + 3200 / (b.r + 24));
+          b.ang += dt * (0.35 + 120 / (b.r + 30));
+          const x = b.bx + Math.cos(b.ang) * b.r;
+          const y = b.by + Math.sin(b.ang) * b.r * 0.72;
+          if (b.r <= R * 0.9 + 2) { swallowed++; continue; }
+          ctx.fillStyle = b.isDiary ? GOLD : PH;
+          ctx.globalAlpha = clamp(0.9 - (b.r / (W * 0.5)) * 0.3, 0.35, 0.95);
+          ctx.fillText(b.ch, x, y);
+        }
+        inbits = inbits.filter((b) => b.r > R * 0.9 + 2);
+        ctx.globalAlpha = 1;
+
+        // a diary falls in on its own every so often
+        if (t > 5 && t - lastDiary > 14 && age < CYCLE - 9) { lastDiary = t; dropDiary(); }
+
+        ctx.fillStyle = DIM; ctx.font = MONO(10);
+        ctx.fillText('IN: STRUCTURE', 14, H * 0.12);
+        ctx.fillText('OUT: HEAT WITH NO PATTERN WE CAN READ', 14, H * 0.12 + 16);
+        ctx.fillStyle = GOLD;
+        ctx.fillText(`HOLE REMAINING: ${(100 * (1 - evapK)).toFixed(0)}%`, 14, H * 0.12 + 32);
+        ro.textContent = `THIS CYCLE \u2014 SWALLOWED: ${swallowed} BITS \u00b7 EMITTED: 0 BITS, ONLY HEAT`;
+      } else {
+        // gone — the moment the calculation breaks
+        if (inbits.length) { swallowed += inbits.length; inbits = []; }
+        ctx.textAlign = 'center';
+        ctx.fillStyle = GOLD; ctx.font = MONO(14);
+        ctx.fillText('EVAPORATED.', bx, by - 14);
+        ctx.fillStyle = PAPER; ctx.font = MONO(10);
+        ctx.fillText(`HAWKING’S ARITHMETIC: ALL ${swallowed} BITS, UNACCOUNTED FOR.`, bx, by + 8);
+        ctx.fillStyle = DIM;
+        ctx.fillText('QM SAYS THAT IS IMPOSSIBLE — SO ONE OF OUR TWO BEST CALCULATIONS IS WRONG.', bx, by + 26);
+        ctx.textAlign = 'left';
+        ro.textContent = 'LEDGER REFUSES TO BALANCE · BEST BET: THE BITS RIDE OUT IN THE STATIC — NOBODY CAN SHOW HOW';
       }
-      inbits = inbits.filter((b) => b.r > R * 0.9);
-      ctx.globalAlpha = 1;
 
       // outgoing thermal radiation — identical, featureless
-      if (Math.random() < dt * 7 && outbits.length < 50) {
+      const rate = terminal ? 2 : 6 + 26 * evapK;
+      if (Math.random() < dt * rate && outbits.length < 70 && !terminal) {
         const a = rand(0, TAU);
-        outbits.push({ x: bx + Math.cos(a) * (R + 4), y: by + Math.sin(a) * (R + 4), vx: Math.cos(a) * 34, vy: Math.sin(a) * 34, life: 0 });
+        outbits.push({ x: bx + Math.cos(a) * (R + 4), y: by + Math.sin(a) * (R + 4), vx: Math.cos(a) * (30 + 30 * evapK), vy: Math.sin(a) * (30 + 30 * evapK), life: 0 });
       }
       for (const o of outbits) {
         o.x += o.vx * dt; o.y += o.vy * dt; o.life += dt;
@@ -884,11 +1003,6 @@
       }
       ctx.globalAlpha = 1;
       outbits = outbits.filter((o) => o.life < 4 && o.x > -10 && o.x < W + 10 && o.y > -10 && o.y < H + 10);
-
-      ctx.fillStyle = DIM; ctx.font = MONO(10);
-      ctx.fillText('IN: STRUCTURE', 14, H * 0.12);
-      ctx.fillText('OUT: STATIC', 14, H * 0.12 + 16);
-      ro.textContent = `SWALLOWED: ${swallowed} BITS · EMITTED: THERMAL NOISE · LEDGER: DOES NOT BALANCE`;
     }
 
     const st = stage(canvas, draw, 16 / 9);
@@ -898,10 +1012,15 @@
       for (let i = 0; i < chars.length; i++) {
         timers.push(setTimeout(() => spawnBit(st.W, st.H, chars[i]), i * 90));
       }
-      diary++;
       st.pulse(6);
     }
-    btn(controls, 'Drop in a diary', () => { lastDiary = st.now(); dropDiary(); });
+    btn(controls, 'Drop in a diary', () => {
+      const t = st.now();
+      // leave enough cycle for the diary to actually fall in
+      if (t - cycleStart >= CYCLE - 9) { cycleStart = t; swallowed = 0; inbits = []; outbits = []; }
+      lastDiary = t;
+      dropDiary();
+    });
     return () => { timers.forEach(clearTimeout); st.destroy(); };
   }
 
@@ -910,12 +1029,12 @@
      Smooth spacetime, until you look closely enough.
      ============================================================ */
   function vizGravity(canvas, controls) {
-    let mouse = null;
+    let mouse = null, orbA = rand(0, TAU);
+    const trail = [];
     const ro = readout(controls);
-    ro.textContent = 'MOVE THE LENS. THE GRID IS SMOOTH — THE FOAM IS A GUESS.';
+    ro.textContent = 'NO EXPERIMENT HAS EVER REACHED THIS SCALE \u2014 THE FOAM IS A GUESS';
 
     function gridPoint(x, y, W, H, jitter, t) {
-      // curvature toward central mass
       const mx = W / 2, my = H / 2;
       const dx = x - mx, dy = y - my;
       const d = Math.hypot(dx, dy) + 26;
@@ -947,7 +1066,7 @@
       ctx.stroke();
     }
 
-    function draw(ctx, W, H, t) {
+    function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
 
       // smooth relativistic spacetime
@@ -969,7 +1088,6 @@
       ctx.fillRect(0, 0, W, H);
       ctx.strokeStyle = 'rgba(110,243,193,0.5)';
       drawGrid(ctx, W, H, t, 4.5);
-      // foam bubbles
       for (let i = 0; i < 26; i++) {
         const a = t * 3 + i * 2.4;
         const fx = lx + Math.sin(a * 1.7 + i) * LR * 0.8;
@@ -982,14 +1100,59 @@
       ctx.globalAlpha = 1;
       ctx.restore();
 
-      // lens ring + label
+      // one particle, two rulebooks
+      orbA += dt * 0.55;
+      const px = W / 2 + Math.cos(orbA) * W * 0.33;
+      const py = H / 2 + Math.sin(orbA) * H * 0.3;
+      const inLens = (px - lx) ** 2 + (py - ly) ** 2 < LR * LR;
+      trail.push({ x: px, y: py, in: inLens });
+      if (trail.length > 110) trail.shift();
+
+      for (let i = 1; i < trail.length; i++) {
+        const a = trail[i - 1], b = trail[i];
+        const alpha = (i / trail.length) * 0.8;
+        // classify against where the lens is NOW, not where it was
+        const bIn = (b.x - lx) ** 2 + (b.y - ly) ** 2 < LR * LR;
+        if (!bIn) {
+          ctx.strokeStyle = PAPER;
+          ctx.globalAlpha = alpha * 0.6;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        } else {
+          // inside the lens the single path frays into many
+          for (const k of [-1, 0, 1]) {
+            const off = k * (4 + 3 * Math.sin(i * 0.7 + t * 5));
+            ctx.strokeStyle = PH;
+            ctx.globalAlpha = alpha * 0.45;
+            ctx.beginPath();
+            ctx.moveTo(a.x + off, a.y + off * 0.6);
+            ctx.lineTo(b.x + off, b.y + off * 0.6);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = GOLD;
+      ctx.shadowColor = GOLD; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(px, py, 3.4, 0, TAU); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // lens ring + labels
       ctx.strokeStyle = GOLD; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.arc(lx, ly, LR, 0, TAU); ctx.stroke();
       ctx.lineWidth = 1;
-      ctx.fillStyle = GOLD; ctx.font = MONO(10); ctx.textAlign = 'center';
-      ctx.fillText('×10³⁴ — PLANCK SCALE, 10⁻³⁵ m', lx, ly + LR + 16);
+      ctx.font = MONO(10); ctx.textAlign = 'center';
+      ctx.fillStyle = GOLD;
+      const labelY = ly + LR + 26 > H * 0.9 ? ly - LR - 10 : ly + LR + 16;
+      ctx.fillText('\u00d710\u00b3\u2074 \u2014 PLANCK SCALE, 10\u207b\u00b3\u2075 m', clamp(lx, 130, W - 130), labelY);
       ctx.fillStyle = DIM;
-      ctx.fillText('GENERAL RELATIVITY: SMOOTH', W / 2, H * 0.08);
+      ctx.fillText('OUT HERE: ONE SMOOTH SPACETIME (EINSTEIN)', W / 2, H * 0.07);
+      if (inLens) {
+        ctx.fillStyle = GOLD;
+        ctx.fillText('INSIDE: THE GEOMETRY BENEATH IT IS MANY GEOMETRIES AT ONCE \u2014 NOBODY HAS THE RULEBOOK', W / 2, H * 0.955);
+      } else if (mouse) {
+        ctx.fillStyle = DIM;
+        ctx.fillText('MOVE THE LENS ONTO THE PARTICLE', W / 2, H * 0.955);
+      }
       ctx.textAlign = 'left';
     }
 
@@ -1014,7 +1177,7 @@
      Empty space seethes; the prediction misses by 10^120.
      ============================================================ */
   function vizVacuum(canvas, controls) {
-    let pairs = [], born = 0, barK = 0, barPlay = true, barDoneAt = null;
+    let pairs = [], born = 0, barK = 0, barPlay = true, barDoneAt = null, zeros = 0;
     const ro = readout(controls);
 
     function draw(ctx, W, H, t, dt) {
@@ -1059,10 +1222,11 @@
       const bx = W * 0.72, bw = (W - bx - 20) / 2 - 8;
       const base = H * 0.9;
       if (barPlay) barK = clamp(barK + dt * 0.5, 0, 1);
-      // replay the recount every so often
+      // once the bar tops out, spell the ratio out digit by digit, then replay
       if (barK >= 1) {
+        zeros = clamp(zeros + dt * 16, 0, 120);
         if (barDoneAt === null) barDoneAt = t;
-        else if (t - barDoneAt > 7) { barK = 0; barDoneAt = null; }
+        else if (t - barDoneAt > 12) { barK = 0; barDoneAt = null; zeros = 0; }
       }
 
       // observed: a sliver
@@ -1096,11 +1260,25 @@
       ctx.fillText('(QFT naïve sum)', px + bw / 2, base + 26);
       ctx.textAlign = 'left';
 
-      ro.textContent = `PAIRS FLICKERED: ${born} · PREDICTION / OBSERVATION ≈ 10¹²⁰`;
+      // the ratio, spelling itself out
+      if (zeros > 0) {
+        const n = Math.floor(zeros);
+        ctx.fillStyle = GOLD; ctx.font = MONO(12);
+        ctx.fillText('NAÏVE PREDICTION ÷ MEASUREMENT ≈ 10^' + n, 20, H * 0.965);
+        if (n >= 120) {
+          ctx.fillStyle = PAPER; ctx.font = MONO(10); ctx.textAlign = 'center';
+          ctx.fillText('A ONE WITH 120 ZEROS — AND NOBODY CAN FIND THE WRONG STEP', fieldW / 2, H * 0.86);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      ro.textContent = zeros > 0
+        ? `PAIRS FLICKERED: ${born} · OFF BY 10^${Math.floor(zeros)}${zeros >= 120 ? '' : ' AND COUNTING'}`
+        : `PAIRS FLICKERED: ${born} · NOW COUNT THE ENERGY THIS NOTHING HOLDS`;
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Recount the modes', () => { barK = 0; barDoneAt = null; st.pulse(3); });
+    btn(controls, 'Recount the modes', () => { barK = 0; barDoneAt = null; zeros = 0; st.pulse(3); });
     return () => st.destroy();
   }
 
@@ -1109,7 +1287,7 @@
      Reversible laws, irreversible world. Try running it backwards.
      ============================================================ */
   function vizTime(canvas, controls) {
-    let parts = null, reversals = 0, dir = 1, lastReverse = 0;
+    let parts = null, reversals = 0, dir = 1, lastReverse = 0, lastSample = 0;
     const N = 110;
     const ro = readout(controls);
     const hist = [];
@@ -1167,27 +1345,50 @@
       }
       ctx.globalAlpha = 1;
 
-      // entropy sparkline
+      // entropy sparkline — sampled slowly so a whole rise-then-fall fits
       const S = entropy(W, H);
-      hist.push(S);
-      if (hist.length > 260) hist.shift();
+      if (t - lastSample > 0.1) {
+        lastSample = t;
+        hist.push({ s: S, rev: dir < 0 });
+        if (hist.length > 260) hist.shift();
+      }
       const Smax = Math.log(60);
       const gy0 = H * 0.06, gh = H * 0.16, gx0 = W * 0.62, gw = W * 0.34;
+      const sy = (s) => gy0 + gh - (s / Smax) * gh * 0.92;
       ctx.strokeStyle = FAINT;
       ctx.strokeRect(gx0, gy0, gw, gh);
       ctx.beginPath();
-      hist.forEach((s, i) => {
+      hist.forEach((h2, i) => {
         const x = gx0 + (i / 259) * gw;
-        const y = gy0 + gh - (s / Smax) * gh * 0.92;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        i ? ctx.lineTo(x, sy(h2.s)) : ctx.moveTo(x, sy(h2.s));
       });
       ctx.strokeStyle = PAPER; ctx.stroke();
+      ctx.strokeStyle = GOLD; ctx.lineWidth = 1.6;
+      for (let i = 1; i < hist.length; i++) {
+        if (!hist[i].rev) continue;
+        ctx.beginPath();
+        ctx.moveTo(gx0 + ((i - 1) / 259) * gw, sy(hist[i - 1].s));
+        ctx.lineTo(gx0 + (i / 259) * gw, sy(hist[i].s));
+        ctx.stroke();
+      }
+      ctx.lineWidth = 1;
       ctx.fillStyle = DIM; ctx.font = MONO(9);
       ctx.fillText('ENTROPY', gx0 + 6, gy0 + 12);
 
       ctx.fillStyle = dir > 0 ? DIM : GOLD;
       ctx.font = MONO(10);
       ctx.fillText(dir > 0 ? 'TIME →' : '← TIME (SAME LAWS)', 14, H * 0.1);
+
+      // say the impossible part while it is on screen
+      ctx.textAlign = 'center';
+      if (reversals > 0 && t - lastReverse < 3.2) {
+        ctx.fillStyle = GOLD;
+        ctx.fillText(dir < 0 ? 'EVERY VELOCITY FLIPPED — THE LAWS DO NOT OBJECT' : 'FORWARD AGAIN — NO RULE WAS EVER BROKEN', W / 2, H * 0.95);
+      } else if (dir < 0) {
+        ctx.fillStyle = GOLD;
+        ctx.fillText('ENTROPY FALLING — PERFECTLY LEGAL. AT EGG SIZE, YOU WILL NEVER SEE IT.', W / 2, H * 0.95);
+      }
+      ctx.textAlign = 'left';
 
       ro.textContent = `S = ${S.toFixed(2)} · REVERSALS: ${reversals} · THE LAWS DON'T MIND`;
     }
@@ -1207,7 +1408,7 @@
      A Bell-test meter: the needle passes the classical limit.
      ============================================================ */
   function vizRandomness(canvas, controls) {
-    let trials = 0, running = true;
+    let trials = 0, crossedAt = null, lastRestart = 0;
     const bits = [];
     const ro = readout(controls);
     const S_TRUE = 2 * Math.SQRT2;
@@ -1216,22 +1417,23 @@
       ctx.clearRect(0, 0, W, H);
       const cx = W / 2, cy = H * 0.72, R = Math.min(W * 0.34, H * 0.56);
 
-      if (running) {
-        trials += Math.max(1, Math.floor(dt * 640));
-        if (Math.random() < dt * 22) {
-          bits.push(Math.random() < 0.5 ? '0' : '1');
-          if (bits.length > 60) bits.shift();
-        }
-      }
-      const noise = 0.5 / Math.sqrt(Math.max(trials, 2));
-      const S = clamp(S_TRUE + (Math.sin(t * 13.7) + Math.sin(t * 7.3)) * noise * 2, 0, 3.1);
+      // replay the whole crossing every so often — the crossing IS the show
+      if (t - lastRestart > 18) { lastRestart = t; trials = 0; crossedAt = null; bits.length = 0; }
 
-      // gauge arc: S from 0 → 3.1 maps to angle 200° → -20°
+      trials += Math.max(1, Math.floor(dt * 640));
+      if (Math.random() < dt * 22) {
+        bits.push(Math.random() < 0.5 ? '0' : '1');
+        if (bits.length > 60) bits.shift();
+      }
+      const progress = 1 - Math.exp(-trials / 2400);
+      const noise = 0.5 / Math.sqrt(Math.max(trials, 2)) + 0.04 * (1 - progress);
+      const S = clamp(S_TRUE * progress + (Math.sin(t * 13.7) + Math.sin(t * 7.3)) * noise, 0, 3.1);
+      if (crossedAt === null && S_TRUE * progress > 2) crossedAt = t;
+
       const a0 = Math.PI * 1.11, a1 = -Math.PI * 0.11;
       const angOf = (s) => lerp(a0, a1, s / 3.1);
 
       ctx.lineWidth = 2;
-      // zones
       const zone = (s1, s2, color, alpha) => {
         ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 10;
         ctx.beginPath();
@@ -1239,23 +1441,46 @@
         ctx.stroke();
         ctx.globalAlpha = 1; ctx.lineWidth = 2;
       };
-      zone(0, 2, 'rgba(233,228,214,0.25)', 0.6);       // classical
-      zone(2, S_TRUE, PH, 0.5);                        // quantum territory
-      zone(S_TRUE, 3.1, 'rgba(232,184,75,0.35)', 0.5); // beyond even QM
+      zone(0, 2, 'rgba(233,228,214,0.25)', 0.6);
+      zone(2, S_TRUE, PH, 0.5);
+      zone(S_TRUE, 3.1, 'rgba(232,184,75,0.35)', 0.5);
 
-      // ticks + labels
-      ctx.font = MONO(9); ctx.fillStyle = DIM; ctx.textAlign = 'center';
-      const tick = (s, label, color) => {
+      // the classical wall
+      const wa = angOf(2);
+      ctx.strokeStyle = PAPER; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(wa) * (R - 18), cy - Math.sin(wa) * (R - 18));
+      ctx.lineTo(cx + Math.cos(wa) * (R + 16), cy - Math.sin(wa) * (R + 16));
+      ctx.stroke();
+      ctx.lineWidth = 2;
+
+      ctx.font = MONO(9); ctx.textAlign = 'center';
+      const tickLabel = (s, label, color, extra) => {
         const a = angOf(s);
-        const x1 = cx + Math.cos(a) * (R - 10), y1 = cy - Math.sin(a) * (R - 10);
-        const x2 = cx + Math.cos(a) * (R + 12), y2 = cy - Math.sin(a) * (R + 12);
-        ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-        const lx = cx + Math.cos(a) * (R + 30), lyy = cy - Math.sin(a) * (R + 26);
+        const lx = cx + Math.cos(a) * (R + 34), lyy = cy - Math.sin(a) * (R + 26) + (extra || 0);
         ctx.fillStyle = color;
         ctx.fillText(label, lx, lyy);
       };
-      tick(2, 'S = 2 · CLASSICAL LIMIT', PAPER);
-      tick(S_TRUE, '2√2 · QUANTUM BOUND', GOLD);
+      tickLabel(2, 'S = 2 \u2014 EVERY LOCAL PRE-WRITTEN', PAPER);
+      tickLabel(2, 'SCRIPT STOPS HERE', PAPER, 12);
+      tickLabel(S_TRUE, '2\u221a2 \u00b7 QUANTUM BOUND', GOLD);
+
+      // wall-break flash
+      if (crossedAt !== null && t - crossedAt < 3.2) {
+        const k = (t - crossedAt) / 3.2;
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = GOLD;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(wa) * R, cy - Math.sin(wa) * R, 8 + easeOut(k) * 46, 0, TAU);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = GOLD; ctx.font = MONO(11);
+        ctx.fillText('THE WALL JUST BROKE \u2014 NO LOCAL SCRIPT WRITES THESE BITS', cx, cy - R - 34);
+      } else if (crossedAt !== null) {
+        // keep the paradox stated for as long as it is shown
+        ctx.fillStyle = GOLD; ctx.font = MONO(10);
+        ctx.fillText('NEEDLE PAST THE WALL \u2014 NO LOCAL PRE-WRITTEN SCRIPT ALLOWS THIS', cx, cy - R - 34);
+      }
 
       // needle
       const na = angOf(S);
@@ -1272,7 +1497,7 @@
       ctx.fillStyle = PH; ctx.font = MONO(13);
       ctx.fillText('S = ' + S.toFixed(4), cx, cy - R * 0.36);
       ctx.fillStyle = DIM; ctx.font = MONO(9);
-      ctx.fillText('CHSH CORRELATION', cx, cy - R * 0.36 + 14);
+      ctx.fillText('CHSH CORRELATION \u00b7 ACCUMULATING TRIALS', cx, cy - R * 0.36 + 14);
 
       // raw quantum bits, bottom strip
       ctx.font = MONO(10);
@@ -1287,11 +1512,16 @@
       }
       ctx.globalAlpha = 1;
 
-      ro.textContent = `TRIALS: ${trials.toLocaleString()} · NO LOCAL SCRIPT CAN REACH PAST 2`;
+      ro.textContent = crossedAt !== null
+        ? `TRIALS: ${trials.toLocaleString()} \u00b7 PAST THE WALL \u2014 AND STILL NO PATTERN`
+        : `TRIALS: ${trials.toLocaleString()} \u00b7 A LOCALLY SCRIPTED UNIVERSE MUST STAY BELOW 2`;
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Restart the trials', () => { trials = 0; bits.length = 0; st.pulse(5); });
+    btn(controls, 'Restart the trials', () => {
+      trials = 0; crossedAt = null; bits.length = 0; lastRestart = st.now();
+      st.pulse(8);
+    });
     return () => st.destroy();
   }
 
