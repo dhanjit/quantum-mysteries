@@ -24,7 +24,7 @@
       teaser: 'Two particles, one fate, any distance.',
       nm: 656, // H-alpha
       viz: 'entanglement',
-      riddle: 'Measure one particle of an entangled pair and the other’s state is fixed at once — even if it is on the other side of the galaxy. Bell’s theorem proves the particles cannot merely be carrying a secret agreement made in advance, and half a century of experiments (Nobel Prize, 2022) confirms it.',
+      riddle: 'Measure one particle of an entangled pair and the other’s state is fixed at once — even if it is on the other side of the galaxy. Einstein dismissed this as “spooky action at a distance”. Bell’s theorem proves the particles cannot merely be carrying a secret agreement made in advance, and half a century of experiments (Nobel Prize, 2022) confirms it.',
       stakes: 'Either something links distant events faster than light (yet uselessly — no message can ride on it), or there are no pre-existing facts for measurements to reveal, or measurements don’t have single outcomes. Each escape route breaks something we thought was bedrock.',
       caption: 'A pair in superposition drifts apart. Measure either one: both decide together, instantly, and always oppositely. No signal passes between them.',
     },
