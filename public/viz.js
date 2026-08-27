@@ -1408,120 +1408,203 @@
      A Bell-test meter: the needle passes the classical limit.
      ============================================================ */
   function vizRandomness(canvas, controls) {
-    let trials = 0, crossedAt = null, lastRestart = 0;
-    const bits = [];
     const ro = readout(controls);
-    const S_TRUE = 2 * Math.SQRT2;
+    const DUR = [13, 11, 15];
+    let act = 0, actStart = 0;
+    // act 1 — the coin nobody can call
+    let bits = [], guesses = 0, correct = 0, nextEvent = 0;
+    // act 2 — the wall
+    let crossT = null;
+    // act 3 — the ways out
+    const HATCHES = [
+      { name: 'MANY-WORLDS',      how: ['EVERY OUTCOME', 'ACTUALLY HAPPENS'],        price: ['PRICE: ALL VERSIONS', 'OF YOU HAPPEN TOO'] },
+      { name: 'PILOT WAVE',       how: ['A HIDDEN LAYER', 'DECIDES EACH BIT'],       price: ['PRICE: INFLUENCE', 'FASTER THAN LIGHT'] },
+      { name: 'SUPERDETERMINISM', how: ['THE UNIVERSE SCRIPTED', 'YOUR QUESTIONS TOO'], price: ['PRICE: NO EXPERIMENT', 'CAN BE TRUSTED'] },
+    ];
+
+    function setAct(i, t) {
+      act = ((i % 3) + 3) % 3;
+      actStart = t;
+      if (act === 0) { bits = []; guesses = 0; correct = 0; nextEvent = 0; }
+      if (act === 1) crossT = null;
+    }
+
+    function drawAct1(ctx, W, H, t) {
+      const cy = H * 0.5;
+
+      // the quantum coin: an atom that decides only when asked
+      const ex = W * 0.11;
+      ctx.strokeStyle = PH;
+      ctx.beginPath(); ctx.arc(ex, cy, 12, 0, TAU); ctx.stroke();
+      const oa = t * 5;
+      ctx.fillStyle = PH;
+      ctx.beginPath(); ctx.arc(ex + Math.cos(oa) * 12, cy + Math.sin(oa) * 12, 2.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = DIM; ctx.font = MONO(9); ctx.textAlign = 'center';
+      ctx.fillText('A QUANTUM COIN', ex, cy + 32);
+
+      // predict, then reveal
+      if (t > nextEvent) {
+        nextEvent = t + 0.38;
+        const g = Math.random() < 0.5 ? '0' : '1';
+        const a = Math.random() < 0.5 ? '0' : '1';
+        bits.push({ g, a, ok: g === a });
+        guesses++; if (g === a) correct++;
+        if (bits.length > 34) bits.shift();
+      }
+
+      // the stream: guess above, outcome below, verdict between
+      ctx.font = MONO(11);
+      const x0 = W * 0.2, dx = (W * 0.72) / 34;
+      for (let i = 0; i < bits.length; i++) {
+        const b = bits[i];
+        const x = x0 + i * dx;
+        ctx.globalAlpha = 0.35 + 0.6 * (i / bits.length);
+        ctx.fillStyle = DIM;
+        ctx.fillText(b.g, x, cy - 26);
+        ctx.fillStyle = b.ok ? PH : GOLD;
+        ctx.font = MONO(8);
+        ctx.fillText(b.ok ? '\u2713' : '\u2717', x, cy - 8);
+        ctx.font = MONO(11);
+        ctx.fillStyle = PH;
+        ctx.fillText(b.a, x, cy + 12);
+      }
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'left'; ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText('GUESS', W * 0.13, cy - 26);
+      ctx.fillText('BIT', W * 0.13, cy + 12);
+      ctx.textAlign = 'center';
+
+      const pct = guesses ? (100 * correct / guesses) : 50;
+      ctx.fillStyle = PAPER; ctx.font = MONO(13);
+      ctx.fillText(`PREDICTOR SCORE: ${pct.toFixed(1)}%`, W / 2, H * 0.78);
+      ctx.fillStyle = DIM; ctx.font = MONO(9);
+      ctx.fillText('A BLIND COIN FLIP SCORES 50%. USE ANY FORMULA YOU LIKE.', W / 2, H * 0.78 + 15);
+      ctx.fillStyle = GOLD; ctx.font = MONO(10);
+      ctx.fillText('NOTHING HAS EVER DONE BETTER. NOTHING.', W / 2, H * 0.93);
+    }
+
+    function drawAct2(ctx, W, H, t, age) {
+      const cy = H * 0.52;
+      const x0 = W * 0.12, x1 = W * 0.88;
+      const xOf = (s) => lerp(x0, x1, s / 3);
+      const S_TRUE = 2 * Math.SQRT2;
+
+      // question first
+      ctx.textAlign = 'center'; ctx.font = MONO(10); ctx.fillStyle = PAPER;
+      ctx.fillText('MAYBE THE BITS ONLY LOOK RANDOM — A SECRET SCRIPT, WRITTEN AT BIRTH?', W / 2, H * 0.2);
+      ctx.fillStyle = DIM; ctx.font = MONO(9);
+      ctx.fillText('BELL TEST: ANY SUCH LOCAL SCRIPT SCORES AT MOST 2 ON THIS DIAL', W / 2, H * 0.2 + 15);
+
+      // the track
+      ctx.strokeStyle = FAINT;
+      ctx.beginPath(); ctx.moveTo(x0, cy); ctx.lineTo(x1, cy); ctx.stroke();
+      ctx.font = MONO(9); ctx.fillStyle = DIM;
+      for (const s of [0, 1, 2, 3]) {
+        ctx.beginPath(); ctx.moveTo(xOf(s), cy - 4); ctx.lineTo(xOf(s), cy + 4);
+        ctx.strokeStyle = FAINT; ctx.stroke();
+        ctx.fillText(String(s), xOf(s), cy + 20);
+      }
+
+      // the wall at 2
+      ctx.strokeStyle = PAPER; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(xOf(2), cy - 26); ctx.lineTo(xOf(2), cy + 26); ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.fillStyle = PAPER;
+      ctx.fillText('EVERY LOCAL SCRIPT', xOf(2), cy - 44);
+      ctx.fillText('STOPS HERE', xOf(2), cy - 33);
+
+      // the quantum mark
+      ctx.fillStyle = GOLD;
+      ctx.beginPath(); ctx.moveTo(xOf(S_TRUE), cy - 12); ctx.lineTo(xOf(S_TRUE) - 4, cy - 20); ctx.lineTo(xOf(S_TRUE) + 4, cy - 20); ctx.closePath(); ctx.fill();
+      ctx.fillText('2\u221a2 \u2014 WHAT THE LAB MEASURES', xOf(S_TRUE), cy + 38);
+
+      // the measured value slides in and smashes through
+      const S = Math.min(S_TRUE, easeOut(Math.min(age / 6.5, 1)) * S_TRUE);
+      if (crossT === null && S >= 2) crossT = t;
+      ctx.fillStyle = S >= 2 ? GOLD : PH;
+      ctx.shadowColor = S >= 2 ? GOLD : PH; ctx.shadowBlur = 12;
+      ctx.fillRect(x0, cy - 2, xOf(S) - x0, 4);
+      ctx.beginPath(); ctx.arc(xOf(S), cy, 6, 0, TAU); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (crossT !== null && t - crossT < 2.5) {
+        const k = (t - crossT) / 2.5;
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = GOLD;
+        ctx.beginPath(); ctx.arc(xOf(2), cy, 6 + easeOut(k) * 40, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      if (crossT !== null) {
+        ctx.fillStyle = GOLD; ctx.font = MONO(10);
+        ctx.fillText('THE WALL BREAKS \u2014 NO LOCAL SCRIPT CAN BE BEHIND THESE BITS', W / 2, H * 0.82);
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('SO: TRULY RANDOM? OR SOMETHING STRANGER \u2192', W / 2, H * 0.82 + 15);
+      }
+    }
+
+    function drawAct3(ctx, W, H, t, age) {
+      ctx.textAlign = 'center'; ctx.font = MONO(10); ctx.fillStyle = PAPER;
+      ctx.fillText('THREE WAYS TO SAVE DETERMINISM \u2014 EACH WITH A PRICE', W / 2, H * 0.13);
+
+      const hot = clamp(Math.floor(age / (DUR[2] / 3)), 0, 2);
+      const dw = W * 0.24, dh = H * 0.42, dy = H * 0.24;
+      for (let i = 0; i < 3; i++) {
+        const cx = W * (0.19 + 0.31 * i);
+        const on = i === hot;
+        ctx.globalAlpha = on ? 1 : 0.35;
+        // the door
+        ctx.strokeStyle = on ? GOLD : PAPER;
+        ctx.lineWidth = on ? 2 : 1;
+        if (on) { ctx.shadowColor = GOLD; ctx.shadowBlur = 14; }
+        ctx.strokeRect(cx - dw / 2, dy, dw, dh);
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 1;
+        // handle
+        ctx.fillStyle = on ? GOLD : DIM;
+        ctx.beginPath(); ctx.arc(cx + dw / 2 - 9, dy + dh / 2, 2.5, 0, TAU); ctx.fill();
+        // name + story
+        ctx.font = MONO(10);
+        ctx.fillStyle = on ? GOLD : DIM;
+        ctx.fillText(HATCHES[i].name, cx, dy - 10);
+        ctx.font = MONO(9);
+        ctx.fillStyle = on ? PAPER : DIM;
+        HATCHES[i].how.forEach((ln, li) => ctx.fillText(ln, cx, dy + dh * 0.42 + li * 13));
+        if (on) {
+          ctx.fillStyle = GOLD;
+          HATCHES[i].price.forEach((ln, li) => ctx.fillText(ln, cx, dy + dh + 18 + li * 13));
+        }
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = GOLD; ctx.font = MONO(10);
+      ctx.fillText('NOBODY WANTS TO PAY. AFTER A CENTURY \u2014 STILL OPEN.', W / 2, H * 0.95);
+    }
 
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
-      const cx = W / 2, cy = H * 0.72, R = Math.min(W * 0.34, H * 0.56);
+      const age = t - actStart;
+      if (age > DUR[act]) setAct(act + 1, t);
 
-      // replay the whole crossing every so often — the crossing IS the show
-      if (t - lastRestart > 18) { lastRestart = t; trials = 0; crossedAt = null; bits.length = 0; }
+      ctx.textAlign = 'center'; ctx.font = MONO(9); ctx.fillStyle = FAINT;
+      const titles = ['ACT 1 OF 3 \u2014 THE COIN NOBODY CAN CALL',
+                      'ACT 2 OF 3 \u2014 COULD IT BE A SECRET SCRIPT?',
+                      'ACT 3 OF 3 \u2014 THE WAYS OUT'];
+      ctx.fillStyle = DIM;
+      ctx.fillText(titles[act], W / 2, H * 0.055);
 
-      trials += Math.max(1, Math.floor(dt * 640));
-      if (Math.random() < dt * 22) {
-        bits.push(Math.random() < 0.5 ? '0' : '1');
-        if (bits.length > 60) bits.shift();
-      }
-      const progress = 1 - Math.exp(-trials / 2400);
-      const noise = 0.5 / Math.sqrt(Math.max(trials, 2)) + 0.04 * (1 - progress);
-      const S = clamp(S_TRUE * progress + (Math.sin(t * 13.7) + Math.sin(t * 7.3)) * noise, 0, 3.1);
-      if (crossedAt === null && S_TRUE * progress > 2) crossedAt = t;
-
-      const a0 = Math.PI * 1.11, a1 = -Math.PI * 0.11;
-      const angOf = (s) => lerp(a0, a1, s / 3.1);
-
-      ctx.lineWidth = 2;
-      const zone = (s1, s2, color, alpha) => {
-        ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.arc(cx, cy, R, -angOf(s1), -angOf(s2), false);
-        ctx.stroke();
-        ctx.globalAlpha = 1; ctx.lineWidth = 2;
-      };
-      zone(0, 2, 'rgba(233,228,214,0.25)', 0.6);
-      zone(2, S_TRUE, PH, 0.5);
-      zone(S_TRUE, 3.1, 'rgba(232,184,75,0.35)', 0.5);
-
-      // the classical wall
-      const wa = angOf(2);
-      ctx.strokeStyle = PAPER; ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(wa) * (R - 18), cy - Math.sin(wa) * (R - 18));
-      ctx.lineTo(cx + Math.cos(wa) * (R + 16), cy - Math.sin(wa) * (R + 16));
-      ctx.stroke();
-      ctx.lineWidth = 2;
-
-      ctx.font = MONO(9); ctx.textAlign = 'center';
-      const tickLabel = (s, label, color, extra) => {
-        const a = angOf(s);
-        const lx = cx + Math.cos(a) * (R + 34), lyy = cy - Math.sin(a) * (R + 26) + (extra || 0);
-        ctx.fillStyle = color;
-        ctx.fillText(label, lx, lyy);
-      };
-      tickLabel(2, 'S = 2 \u2014 EVERY LOCAL PRE-WRITTEN', PAPER);
-      tickLabel(2, 'SCRIPT STOPS HERE', PAPER, 12);
-      tickLabel(S_TRUE, '2\u221a2 \u00b7 QUANTUM BOUND', GOLD);
-
-      // wall-break flash
-      if (crossedAt !== null && t - crossedAt < 3.2) {
-        const k = (t - crossedAt) / 3.2;
-        ctx.globalAlpha = 1 - k;
-        ctx.strokeStyle = GOLD;
-        ctx.beginPath();
-        ctx.arc(cx + Math.cos(wa) * R, cy - Math.sin(wa) * R, 8 + easeOut(k) * 46, 0, TAU);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = GOLD; ctx.font = MONO(11);
-        ctx.fillText('THE WALL JUST BROKE \u2014 NO LOCAL SCRIPT WRITES THESE BITS', cx, cy - R - 34);
-      } else if (crossedAt !== null) {
-        // keep the paradox stated for as long as it is shown
-        ctx.fillStyle = GOLD; ctx.font = MONO(10);
-        ctx.fillText('NEEDLE PAST THE WALL \u2014 NO LOCAL PRE-WRITTEN SCRIPT ALLOWS THIS', cx, cy - R - 34);
-      }
-
-      // needle
-      const na = angOf(S);
-      ctx.strokeStyle = PH; ctx.lineWidth = 2;
-      ctx.shadowColor = PH; ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(na) * (R - 22), cy - Math.sin(na) * (R - 22));
-      ctx.stroke();
-      ctx.shadowBlur = 0; ctx.lineWidth = 1;
-      ctx.fillStyle = PAPER;
-      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, TAU); ctx.fill();
-
-      ctx.fillStyle = PH; ctx.font = MONO(13);
-      ctx.fillText('S = ' + S.toFixed(4), cx, cy - R * 0.36);
-      ctx.fillStyle = DIM; ctx.font = MONO(9);
-      ctx.fillText('CHSH CORRELATION \u00b7 ACCUMULATING TRIALS', cx, cy - R * 0.36 + 14);
-
-      // raw quantum bits, bottom strip
-      ctx.font = MONO(10);
+      if (act === 0) drawAct1(ctx, W, H, t);
+      else if (act === 1) drawAct2(ctx, W, H, t, age);
+      else drawAct3(ctx, W, H, t, age);
       ctx.textAlign = 'left';
-      let bx = 14;
-      for (let i = 0; i < bits.length; i++) {
-        ctx.globalAlpha = 0.25 + 0.6 * (i / bits.length);
-        ctx.fillStyle = PH;
-        ctx.fillText(bits[i], bx, H * 0.94);
-        bx += 9;
-        if (bx > W - 14) break;
-      }
-      ctx.globalAlpha = 1;
 
-      ro.textContent = crossedAt !== null
-        ? `TRIALS: ${trials.toLocaleString()} \u00b7 PAST THE WALL \u2014 AND STILL NO PATTERN`
-        : `TRIALS: ${trials.toLocaleString()} \u00b7 A LOCALLY SCRIPTED UNIVERSE MUST STAY BELOW 2`;
+      ro.textContent = act === 0
+        ? `BITS: ${guesses} \u00b7 PREDICTOR: ${(guesses ? 100 * correct / guesses : 50).toFixed(1)}% \u00b7 COIN FLIP: 50%`
+        : act === 1
+        ? 'ANY LOCAL SCRIPT \u2264 2 \u00b7 THE LAB MEASURES 2\u221a2 \u2248 2.83'
+        : 'THREE LOOPHOLES, THREE PRICE TAGS \u00b7 STILL OPEN';
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Restart the trials', () => {
-      trials = 0; crossedAt = null; bits.length = 0; lastRestart = st.now();
-      st.pulse(8);
-    });
+    btn(controls, 'Next act', () => { setAct(act + 1, st.now()); st.pulse(DUR[act] + 2); });
     return () => st.destroy();
   }
 

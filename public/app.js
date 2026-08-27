@@ -114,7 +114,7 @@
       viz: 'randomness',
       riddle: 'Quantum outcomes look irreducibly random, and Bell-test experiments rule out any local, pre-written script for them. But loopholes of principle remain: superdeterminism, many-worlds and pilot-wave theory each restore determinism — at the price of abandoning free experimental choice, single outcomes, or locality.',
       stakes: 'Whether the universe is deterministic — whether anything, anywhere, ever truly happens by chance — remains open after a century of quantum mechanics.',
-      caption: 'A Bell test, live. Any local pre-written script is walled in at S = 2 — watch the needle break that wall and settle at 2√2 ≈ 2.83. The bits below have no pattern, and nothing we know of decides them.',
+      caption: 'In three acts. Act one: try to out-guess a quantum coin — the best possible predictor scores a coin flip, forever. Act two: could a secret local script be behind the bits? The Bell test wall says no. Act three: the three known ways out — many-worlds, pilot waves, superdeterminism — each restores determinism at a price nobody wants to pay.',
     },
   ];
 
