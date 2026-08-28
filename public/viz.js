@@ -1465,7 +1465,7 @@
      ============================================================ */
   function vizInformation(canvas, controls) {
     let inbits = [], outbits = [], swallowed = 0;
-    let lastDiary = 0, cycleStart = 0, curR = 44;
+    let lastDiary = 0, diaryAt = -99, cycleStart = 0, curR = 44;
     const CYCLE = 30, AFTER = 5;
     const DIARY = 'DEAR UNIVERSE, REMEMBER ME';
     const ro = readout(controls);
@@ -1527,12 +1527,42 @@
 
         // a diary falls in on its own every so often
         if (t > 5 && t - lastDiary > 14 && age < CYCLE - 9) { lastDiary = t; dropDiary(); }
+        if (t - diaryAt < 4.5) {
+          ctx.fillStyle = GOLD; ctx.font = MONO(10); ctx.textAlign = 'center';
+          ctx.fillText('A DIARY FALLS IN — EVERY LETTER IS MEMORY THE UNIVERSE MUST KEEP', W / 2, H * 0.9);
+          ctx.textAlign = 'left';
+        }
+
+        // name the flows where they flow
+        const ax = bx - R - 36, ay = by - R - 26;
+        ctx.strokeStyle = PH; ctx.globalAlpha = 0.8;
+        ctx.beginPath(); ctx.moveTo(ax - 52, ay - 34); ctx.lineTo(ax, ay); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 9, ay - 2); ctx.moveTo(ax, ay); ctx.lineTo(ax - 2, ay - 9); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = PH; ctx.font = MONO(8); ctx.textAlign = 'right';
+        ctx.fillText('MEMORY, FALLING IN', ax - 56, ay - 38);
+        ctx.textAlign = 'left';
+        const ox = bx + R + 26, oy = by + R + 18;
+        ctx.strokeStyle = 'rgba(160,160,160,0.7)';
+        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + 46, oy + 30); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ox + 46, oy + 30); ctx.lineTo(ox + 37, oy + 28); ctx.moveTo(ox + 46, oy + 30); ctx.lineTo(ox + 44, oy + 21); ctx.stroke();
+        ctx.fillStyle = 'rgba(160,160,160,0.8)'; ctx.font = MONO(8);
+        ctx.fillText('FEATURELESS HEAT, LEAKING OUT', ox + 8, oy + 46);
 
         ctx.fillStyle = DIM; ctx.font = MONO(10);
         ctx.fillText('IN: STRUCTURE', 14, H * 0.12);
         ctx.fillText('OUT: HEAT WITH NO PATTERN WE CAN READ', 14, H * 0.12 + 16);
         ctx.fillStyle = GOLD;
         ctx.fillText(`HOLE REMAINING: ${(100 * (1 - evapK)).toFixed(0)}%`, 14, H * 0.12 + 32);
+
+        // one story line, keyed to where the cycle is
+        ctx.textAlign = 'center'; ctx.font = MONO(10); ctx.fillStyle = PAPER;
+        ctx.fillText(
+          evapK < 0.3 ? 'EVERYTHING FALLING IN CARRIES A RECORD — QM SAYS RECORDS CAN NEVER BE DESTROYED'
+          : evapK < 0.56 ? 'THE HOLE PAYS FOR ITS HEAT WITH ITS OWN MASS — AND THE HEAT CARRIES NO RECORD'
+          : evapK < 0.85 ? 'PAST HALFWAY: IF QM IS RIGHT, THE STATIC MUST START WHISPERING THE RECORDS BACK'
+          : 'ALMOST GONE — AND STILL NOT ONE READABLE BIT HAS COME OUT', W / 2, H * 0.055);
+        ctx.textAlign = 'left';
         ro.textContent = `THIS CYCLE \u2014 SWALLOWED: ${swallowed} BITS \u00b7 EMITTED: 0 BITS, ONLY HEAT`;
       } else {
         // gone — the moment the calculation breaks
@@ -1590,9 +1620,16 @@
         ctx.fillStyle = DIM;
         ctx.fillText('WHAT THE RADIATION REMEMBERS', gx, gy - 6);
         ctx.fillStyle = PAPER;
-        ctx.fillText('HAWKING’S BOOKS: NEVER COMES BACK', gx + 5, gy + 11);
+        ctx.fillText('HAWKING’S MATH: THE HEAT NEVER TELLS', gx + 5, gy + 11);
         ctx.fillStyle = PH;
-        ctx.fillText('QM’S BOOKS: MUST TURN OVER (PAGE CURVE)', gx + 5, gy + 21);
+        ctx.fillText('QM’S RULE: THE STORY COMES BACK OUT (PAGE)', gx + 5, gy + 21);
+        ctx.fillStyle = DIM;
+        ctx.textAlign = 'right';
+        ctx.fillText('TIME →', gx + gw - 5, gy + gh - 5);
+        ctx.textAlign = 'left';
+        // the halfway turnover, marked
+        ctx.strokeStyle = FAINT;
+        ctx.beginPath(); ctx.moveTo(X(0.535), gy + gh); ctx.lineTo(X(0.535), gy + gh - 7); ctx.stroke();
         if (terminal) {
           ctx.fillStyle = GOLD;
           ctx.fillText('ONE BOOK ENDS FULL, ONE EMPTY — ONE IS WRONG', gx, gy + gh + 12);
@@ -1621,6 +1658,7 @@
     const st = stage(canvas, draw, 16 / 9);
     const timers = [];
     function dropDiary() {
+      diaryAt = st.now();
       const chars = DIARY.replace(/ /g, '');
       for (let i = 0; i < chars.length; i++) {
         timers.push(setTimeout(() => spawnBit(st.W, st.H, chars[i]), i * 90));
