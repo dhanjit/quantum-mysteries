@@ -15,7 +15,7 @@
       viz: 'measurement',
       riddle: 'The Schrödinger equation moves every quantum system forward smoothly, predictably, deterministically — until a measurement happens. Then, abruptly, a single outcome is somehow selected and the rest of the wave is gone. Nothing in the mathematics says what counts as a “measurement”, when the collapse occurs, or whether it really occurs at all.',
       stakes: 'Every interpretation of quantum mechanics — Copenhagen, many-worlds, pilot waves, spontaneous collapse — is an attempt to answer this one question. A century after the theory was written down, there is still no agreed answer.',
-      caption: 'A particle spread out as a fog of probability. Point your detector anywhere and click to look: the whole fog snaps to one spot, drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows. And a thousand looks pile up into the fog\u2019s exact shape — each one chance, together the Born rule, seen.',
+      caption: 'A particle spread out as a fog of probability. Point your detector anywhere and click to look: the whole fog snaps to one spot, drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows. And a thousand looks pile up into the fog\u2019s exact shape — each one chance, together the Born rule, seen. And when the fog plays against a merely hidden dot, a single look cannot tell them apart — only interference can, and it answers: wave.',
     },
     {
       slug: 'entanglement',
@@ -59,7 +59,7 @@
       viz: 'psi',
       riddle: 'Is ψ a physical object, like a field — or a summary of what we know, like a probability in a betting book? The PBR theorem (2012) showed that if a system has any objective state at all, ψ must be part of it. Yet the wavefunction of two particles doesn’t live in ordinary space — it lives in an abstract space of six dimensions, and it grows with every particle you add.',
       stakes: 'This decides what quantum theory is even about: whether physics describes the world itself, or only our information about it.',
-      caption: 'The same ψ drawn twice. At each measurement the left story needs a field to snap everywhere at once; the right needs only a change of mind. Same event, two stories — the mathematics cannot say which one happened.',
+      caption: 'The same ψ drawn twice. At each measurement the left story needs a field to snap everywhere at once; the right needs only a change of mind. Same event, two stories — the mathematics cannot say which one happened. Act two asks where ψ even lives: one particle\u2019s wave fits on a line, two need a square, three a cube — and real particles need three numbers each, so two of them already outgrow ordinary space.',
     },
     {
       slug: 'information',
@@ -114,7 +114,7 @@
       viz: 'randomness',
       riddle: 'Quantum outcomes look irreducibly random, and Bell-test experiments rule out any local, pre-written script for them. But loopholes of principle remain: superdeterminism, many-worlds and pilot-wave theory each restore determinism — at the price of abandoning free experimental choice, single outcomes, or locality.',
       stakes: 'Whether the universe is deterministic — whether anything, anywhere, ever truly happens by chance — remains open after a century of quantum mechanics.',
-      caption: 'In three acts. Act one: try to out-guess a quantum coin — the best possible predictor scores a coin flip, forever. Act two: could a secret local script be behind the bits? The Bell test wall says no. Act three: the three known ways out — many-worlds, pilot waves, superdeterminism — each restores determinism at a price nobody wants to pay.',
+      caption: 'In three acts. Act one: try to out-guess a quantum coin — the best possible predictor scores a coin flip, forever. Act two: play the guessing game yourself — every local plan, all sixteen possible, caps at 75%, while shared entangled coins score 85%, straight through the wall. Act three: the three known ways out — many-worlds, pilot waves, superdeterminism — each restores determinism at a price nobody wants to pay.',
     },
   ];
 

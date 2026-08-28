@@ -19,9 +19,9 @@ call — listed at the bottom.
 | 6 | 03 duality | Needs Tonomura's dot counter | **OK** — `DETECTED: n` readout already exists; fast-forward covers the N≈100 → N≈1000 arc. |
 | 7 | 07 gravity | 10¹⁵-beyond-collider gap named in riddle, never shown | **FIX (small)** — the idle bottom line now states the collider-vs-Planck gap; a full drawn ruler would be a second idea on a one-idea canvas (DESIGN.md bar). |
 | 8 | 08 vacuum | Log-ruler with cosmic rungs | **OK** — the counting-to-10¹²⁰ display already lands the magnitude honestly; rung labels kept as an option in verified-numbers.md. |
-| 9 | 10 randomness | Let the viewer *write* a losing local strategy (Bell-Tester style) | **DEFER** — plate 02's new tally act now shows a local script losing empirically; a strategy-builder is a bigger interactive. |
-| 10 | 01 measurement | Superposition vs mere mixture is the actual problem | **DEFER** — needs its own design pass; overlaps plate 05's two-stories framing. |
-| 11 | 05 psi | The unmade visual: configuration space outgrowing real space (line → square → cube) | **DEFER** — flagged as the atlas's possible original contribution; replacing or extending the two-stories viz is a product call. |
+| 9 | 10 randomness | Let the viewer *write* a losing local strategy (Bell-Tester style) | **FIX (round 4)** — act 2 is now the playable guessing game: three local plans cap at 75%, entangled coins score ~85% through the wall. |
+| 10 | 01 measurement | Superposition vs mere mixture is the actual problem | **FIX (round 4)** — the fog-vs-hidden-dot interlude: one look cannot tell them apart; interference (plate 03) can, and answers "wave". |
+| 11 | 05 psi | The unmade visual: configuration space outgrowing real space (line → square → cube) | **FIX (round 4)** — act 2 "Where does ψ live?": line → square → cube, ending on the six-dimensions kicker. |
 
 ## The three structural fixes, as designed
 
@@ -56,15 +56,18 @@ variable. That is Loschmidt's answer to "why does it never happen to you."
 - Plate 04 row corrected (numbers were already present; now verified).
 - Plate 03 row marked done (counter exists).
 
-## Deferred — needs your call (shout-outs)
+## Round 4 — the deferred three, built (user go-ahead 2026-08-28)
 
-1. **Plate 05 configuration-space act** (survey §05): 1 particle → a line,
-   2 → a square, 3 → a cube; ψ visibly outrunning the room it's supposed to
-   live in. Nobody online draws this well. Replace the two-stories viz,
-   append as a second act, or leave? It's the one place the atlas could show
-   something that exists nowhere else.
-2. **Plate 10 strategy-builder**: let the viewer assemble a local
-   hidden-variable strategy and watch it cap at 75% (Bell-Tester's framing).
-   Meaningful build; act 2's wall currently asserts what this would prove.
-3. **Plate 01 superposition-vs-mixture panel**: the coin-under-a-cup
-   contrast. Worth doing only with a design that doesn't crowd the fog.
+1. **Plate 05** gained act 2, "Where does ψ live?": one particle's wave on a
+   line, two on a square, three in a cube — real particles need three
+   numbers each, so two already outgrow ordinary space. The atlas's own
+   visual; nothing like it surfaced in the survey.
+2. **Plate 10** act 2 became the playable CHSH guessing game: the win rule
+   stated exactly, three local plans tried live (75% / 25% / 50%), the wall
+   at 75% marked "proven", and entangled coins (win rate cos²(π/8) ≈ 85.4%)
+   breaking through. The old S-meter's claim is now demonstrated.
+3. **Plate 01** gained the fog-vs-merely-hidden interlude: identical
+   envelopes, one look each, indistinguishable outcomes — with the honest
+   resolution that interference (plate 03) is what separates them.
+
+Nothing remains deferred.

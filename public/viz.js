@@ -123,7 +123,8 @@
       motes.push({ u: Math.random(), v: Math.random(), tw: rand(0, TAU) });
     }
     let collapse = null; // {x0, t0}
-    let burst = null, lastBurst = -20; // {t0, d, bins, fed}
+    let burst = null, lastBurst = -30; // {t0, d, bins, fed}
+    let compare = null, lastCompare = -25; // {t0, xTrue, revealed, xL}
     let pointer = null;
     let nMeas = 0;
     let lastAction = 0;
@@ -154,9 +155,12 @@
       const base = H * 0.84, top = H * 0.14;
       const d = burst ? burst.d : density(t);
 
-      // looks happen on their own if nobody intervenes — and every so
-      // often the instrument looks a thousand times in a row
-      if (!burst && !collapse && t > 24 && t - lastBurst > 44) burstLook();
+      // looks happen on their own if nobody intervenes; every so often
+      // the instrument looks a thousand times in a row, and every so often
+      // it plays the fog against a merely hidden coin
+      if (!compare && !burst && !collapse && t > 26 && t - lastCompare > 50) startCompare();
+      if (compare) { drawCompare(ctx, W, H, t); return; }
+      if (!burst && !collapse && t > 16 && t - lastBurst > 45) burstLook();
       if (!burst && !collapse && t > 5 && t - lastAction > 7) look();
 
       let k = 0, x0 = 0.5;
@@ -306,6 +310,7 @@
     const st = stage(canvas, draw, 16 / 9);
 
     function look() {
+      if (compare) { revealCompare(); return; }
       if (burst) burst = null;
       const t = st.now();
       const d = density(t);
@@ -325,6 +330,7 @@
 
     function burstLook() {
       const t = st.now();
+      compare = null;
       collapse = null;
       burst = { t0: t, d: density(t), bins: new Float32Array(48), fed: 0 };
       lastBurst = t;
@@ -332,6 +338,127 @@
       nMeas += 1000;
       ro.textContent = `LOOKS: ${nMeas} · A THOUSAND AT ONCE — WATCH THE PILE-UP BECOME |ψ|²`;
       st.pulse(9);
+    }
+
+    /* the fog against a merely hidden coin: a superposition and a
+       mixture wear the same envelope — one look cannot separate them */
+    function sampleFrom(d) {
+      let total = 0;
+      for (const v of d) total += v;
+      let r = Math.random() * total;
+      for (let i = 0; i < d.length; i++) {
+        r -= d[i];
+        if (r <= 0) return i / (d.length - 1);
+      }
+      return 0.5;
+    }
+
+    function startCompare() {
+      const t = st.now();
+      burst = null;
+      collapse = null;
+      lastCompare = t;
+      lastAction = t;
+      compare = { t0: t, xTrue: sampleFrom(density(t)), revealed: null, xL: 0.5 };
+      ro.textContent = 'TWO SEALED BOXES, SAME ODDS — IS THE FOG JUST A HIDDEN DOT?';
+      st.pulse(13);
+    }
+
+    function revealCompare() {
+      if (!compare || compare.revealed !== null) return;
+      const t = st.now();
+      compare.revealed = t;
+      compare.xL = sampleFrom(density(t));
+      ro.textContent = 'BOTH GAVE ONE SPOT — ONE LOOK CANNOT TELL THEM APART. INTERFERENCE CAN.';
+      st.pulse(6);
+    }
+
+    function drawCompare(ctx, W, H, t) {
+      const ct = t - compare.t0;
+      if (compare.revealed === null && ct > 5.5) revealCompare();
+      if (ct > 13) { compare = null; return; }
+
+      const mid = W / 2;
+      const base = H * 0.8, top = H * 0.26;
+      const d = density(compare.t0);
+      const rv = compare.revealed !== null;
+      const k = rv ? easeOut(clamp((t - compare.revealed) / 0.4, 0, 1)) : 0;
+
+      ctx.strokeStyle = FAINT;
+      ctx.beginPath(); ctx.moveTo(mid, H * 0.1); ctx.lineTo(mid, H * 0.92); ctx.stroke();
+
+      ctx.textAlign = 'center'; ctx.font = MONO(10);
+      ctx.fillStyle = PH;
+      ctx.fillText('A — SPREAD OUT: A WAVE', mid / 2, H * 0.12);
+      ctx.fillStyle = PAPER;
+      ctx.fillText('B — MERELY HIDDEN: A DOT, SOMEWHERE', mid + mid / 2, H * 0.12);
+      ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText('nothing has a position yet', mid / 2, H * 0.12 + 14);
+      ctx.fillText('it has one — you just can’t see it', mid + mid / 2, H * 0.12 + 14);
+
+      const LW = mid - 40;
+      const spike = (x, x0) => Math.exp(-((x - x0) ** 2) / 0.0003);
+
+      // LEFT: the fog itself (collapses on the look)
+      ctx.beginPath();
+      for (let i = 0; i <= 110; i++) {
+        const x = i / 110;
+        const v = lerp(clamp(d[Math.round(x * (N - 1))], 0, 1), spike(x, compare.xL), k);
+        const px = 20 + x * LW, py = base - v * (base - top);
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.strokeStyle = PH; ctx.lineWidth = 2.5;
+      ctx.shadowColor = PH; ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.shadowBlur = 0; ctx.lineWidth = 1;
+      if (rv) {
+        ctx.fillStyle = GOLD;
+        ctx.beginPath(); ctx.arc(20 + compare.xL * LW, base - 5, 4, 0, TAU); ctx.fill();
+      }
+
+      // RIGHT: the same envelope, but as ignorance about a real dot
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      for (let i = 0; i <= 110; i++) {
+        const x = i / 110;
+        const v = clamp(d[Math.round(x * (N - 1))], 0, 1) * (rv ? 1 - k : 1);
+        const px = mid + 20 + x * LW, py = base - v * (base - top);
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.strokeStyle = PAPER;
+      ctx.globalAlpha = 0.6;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+      if (rv) {
+        const px = mid + 20 + compare.xTrue * LW;
+        ctx.fillStyle = PAPER;
+        ctx.beginPath(); ctx.arc(px, base - 5, 4, 0, TAU); ctx.fill();
+        ctx.strokeStyle = PAPER;
+        ctx.globalAlpha = clamp(1.4 - (t - compare.revealed) * 0.5, 0, 1);
+        ctx.beginPath(); ctx.arc(px, base - 5, 4 + (t - compare.revealed) * 26, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('THE DOT IS ALREADY SOMEWHERE UNDER THIS CURVE', mid + mid / 2, base + 18);
+      }
+
+      ctx.strokeStyle = FAINT;
+      ctx.beginPath(); ctx.moveTo(0, base); ctx.lineTo(W, base); ctx.stroke();
+
+      // the point, said while both spots are on screen
+      if (!rv) {
+        ctx.fillStyle = PAPER; ctx.font = MONO(10);
+        ctx.fillText('SAME ODDS, SAME CURVE — NOW LOOK AT BOTH', W / 2, H * 0.93);
+      } else {
+        ctx.fillStyle = PAPER; ctx.font = MONO(10);
+        ctx.fillText('ONE SPOT EACH. A SINGLE LOOK CANNOT TELL A WAVE FROM A HIDDEN DOT.', W / 2, H * 0.9);
+        if (t - compare.revealed > 1.6) {
+          ctx.fillStyle = GOLD;
+          ctx.fillText('INTERFERENCE CAN — PLATE 03 — AND IT ANSWERS: WAVE. THE FOG IS NOT MERE HIDING.', W / 2, H * 0.96);
+        }
+      }
+      ctx.textAlign = 'left';
     }
 
     const onMove = (e) => {
@@ -348,6 +475,7 @@
 
     btn(controls, 'Look', look);
     btn(controls, 'Look \u00d71000', burstLook);
+    btn(controls, 'Fog vs merely hidden', startCompare);
 
     return () => {
       canvas.removeEventListener('pointermove', onMove);
@@ -1066,15 +1194,33 @@
 
   /* ============================================================
      05 — IS THE WAVEFUNCTION REAL?
-     The same ψ, drawn twice: as a thing, and as knowledge.
+     Act 1: the same ψ drawn twice — a thing, and knowledge.
+     Act 2: where does ψ even live? One particle's wave fits on a
+     line, two need a square, three a cube — configuration space
+     outgrows ordinary space at N = 2. (The atlas's own visual;
+     see docs/inferences.md.)
      ============================================================ */
   function vizPsi(canvas, controls) {
+    const ro = readout(controls);
+    const ACT_DUR = [18, 17];
+    let act = 0, actStart = 0;
+    let bMeasure, bWhere;
     let collapse = null;
     let lastMeasure = 0;
     const dots = [];
     for (let i = 0; i < 260; i++) dots.push({ u: Math.random(), v: Math.random(), tw: rand(0, TAU) });
-    const ro = readout(controls);
-    ro.textContent = 'SAME MATHEMATICS. TWO READINGS.';
+
+    function setAct(i, t) {
+      act = ((i % 2) + 2) % 2;
+      actStart = t;
+      collapse = null;
+      if (act === 0) lastMeasure = t - 4;
+      if (bWhere) bWhere.textContent = act === 0 ? 'Where does ψ live?' : 'Back to the two stories';
+      if (bMeasure) bMeasure.disabled = act === 1;
+      ro.textContent = act === 0
+        ? 'SAME MATHEMATICS. TWO READINGS.'
+        : 'ONE WAVE FOR ALL PARTICLES — IN A SPACE THAT GROWS WITH EVERY ONE';
+    }
 
     function p(x, t) {
       const c1 = 0.35 + 0.1 * Math.sin(t * 0.5), c2 = 0.68 + 0.08 * Math.sin(t * 0.36 + 2);
@@ -1090,13 +1236,12 @@
       return 0.5;
     }
 
-    function draw(ctx, W, H, t) {
-      ctx.clearRect(0, 0, W, H);
+    function drawAct1(ctx, W, H, t) {
       const mid = W / 2;
       const base = H * 0.82, top = H * 0.3;
 
       // measures itself if nobody presses anything
-      if (!collapse && t > 4 && t - lastMeasure > 8) {
+      if (!collapse && t - actStart > 3 && t - lastMeasure > 8) {
         lastMeasure = t;
         collapse = { x0: sampleX(t), t0: t };
       }
@@ -1126,13 +1271,13 @@
 
       ctx.font = MONO(10); ctx.textAlign = 'center';
       ctx.fillStyle = PAPER;
-      ctx.fillText('ONE WAVE, TWO STORIES — NOBODY KNOWS WHICH IS TRUE', mid, H * 0.045);
-      ctx.fillStyle = PH; ctx.fillText('STORY 1 — ψ IS A REAL THING', mid / 2, H * 0.12);
-      ctx.fillStyle = GOLD; ctx.fillText('STORY 2 — ψ IS ONLY WHAT WE KNOW', mid + mid / 2, H * 0.12);
+      ctx.fillText('ONE WAVE, TWO STORIES — NOBODY KNOWS WHICH IS TRUE', mid, H * 0.1);
+      ctx.fillStyle = PH; ctx.fillText('STORY 1 — ψ IS A REAL THING', mid / 2, H * 0.16);
+      ctx.fillStyle = GOLD; ctx.fillText('STORY 2 — ψ IS ONLY WHAT WE KNOW', mid + mid / 2, H * 0.16);
       ctx.font = MONO(9);
       ctx.fillStyle = DIM;
-      ctx.fillText('a ghostly field, really out there', mid / 2, H * 0.12 + 14);
-      ctx.fillText('a ledger of our ignorance', mid + mid / 2, H * 0.12 + 14);
+      ctx.fillText('a ghostly field, really out there', mid / 2, H * 0.16 + 14);
+      ctx.fillText('a ledger of our ignorance', mid + mid / 2, H * 0.16 + 14);
       ctx.fillText('to change, it must physically jump', mid / 2, H * 0.95);
       ctx.fillText('to change, you only need to learn', mid + mid / 2, H * 0.95);
       ctx.textAlign = 'left';
@@ -1179,23 +1324,138 @@
         }
         ctx.textAlign = 'center'; ctx.font = MONO(9);
         ctx.fillStyle = PH;
-        ctx.fillText('THE FIELD SNAPPED — EVERYWHERE AT ONCE', mid / 2, H * 0.2);
+        ctx.fillText('THE FIELD SNAPPED — EVERYWHERE AT ONCE', mid / 2, H * 0.24);
         ctx.fillStyle = GOLD;
-        ctx.fillText('NOTHING MOVED — A MIND UPDATED', mid + mid / 2, H * 0.2);
+        ctx.fillText('NOTHING MOVED — A MIND UPDATED', mid + mid / 2, H * 0.24);
         ctx.font = MONO(11);
         ctx.fillStyle = PAPER;
-        ctx.fillText('SAME EVENT — WHICH STORY IS TRUE?', mid, H * 0.24);
+        ctx.fillText('SAME EVENT — WHICH STORY IS TRUE?', mid, H * 0.28);
         ctx.textAlign = 'left';
       }
     }
 
+    /* act 2 — the wave that outgrew space */
+    function wanderBlob(ctx, cx, cy, rx, ry, t, ph) {
+      const r = Math.min(rx, ry) * 0.55;
+      if (r < 2) return; // panel still growing in
+      const bx = cx + Math.sin(t * 0.7 + ph) * rx * 0.45;
+      const by = cy + Math.cos(t * 0.53 + ph * 2) * ry * 0.45;
+      const g = ctx.createRadialGradient(bx, by, 1, bx, by, r);
+      g.addColorStop(0, 'rgba(110,243,193,0.7)');
+      g.addColorStop(1, 'rgba(110,243,193,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, TAU); ctx.fill();
+    }
+
+    function drawAct2(ctx, W, H, t, age) {
+      ctx.textAlign = 'center';
+      ctx.font = MONO(10); ctx.fillStyle = PAPER;
+      ctx.fillText('PUT EACH PARTICLE ON A WIRE. WHERE DOES THEIR ONE WAVE LIVE?', W / 2, H * 0.12);
+      ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText('NOT ONE WAVE PER PARTICLE, IN OUR SPACE — ONE WAVE FOR ALL OF THEM, IN A SPACE THAT GROWS', W / 2, H * 0.12 + 14);
+
+      const cy = H * 0.5;
+      const s = Math.min(W * 0.2, H * 0.42);
+      const xs = [W * 0.18, W * 0.5, W * 0.82];
+      const on = [age > 0.4, age > 4, age > 7.6];
+      const labels = [
+        ['1 PARTICLE', 'ψ LIVES ON A LINE'],
+        ['2 PARTICLES', 'ONE WAVE ON A SQUARE'],
+        ['3 PARTICLES', 'ONE WAVE IN A CUBE'],
+      ];
+
+      for (let i = 0; i < 3; i++) {
+        if (!on[i]) continue;
+        const cx = xs[i];
+        const grow = easeOut(clamp((age - [0.4, 4, 7.6][i]) / 0.9, 0, 1));
+        ctx.save();
+        ctx.globalAlpha = grow;
+        ctx.strokeStyle = PAPER;
+        if (i === 0) {
+          ctx.beginPath();
+          ctx.moveTo(cx - (s / 2) * grow, cy); ctx.lineTo(cx + (s / 2) * grow, cy);
+          ctx.stroke();
+          // the wave on it
+          ctx.strokeStyle = PH; ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let k2 = 0; k2 <= 40; k2++) {
+            const u = k2 / 40;
+            const px = cx - s / 2 + u * s;
+            const env = Math.exp(-((u - (0.5 + 0.25 * Math.sin(t * 0.7))) ** 2) / 0.02);
+            const py = cy - env * s * 0.22;
+            k2 ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          ctx.stroke(); ctx.lineWidth = 1;
+        } else if (i === 1) {
+          const half = (s / 2) * grow;
+          ctx.strokeRect(cx - half, cy - half, half * 2, half * 2);
+          wanderBlob(ctx, cx, cy, s / 2 - 6, s / 2 - 6, t, 1.1);
+          ctx.font = MONO(8); ctx.fillStyle = DIM;
+          ctx.fillText('particle 1 →', cx, cy + half + 12);
+          ctx.save();
+          ctx.translate(cx - half - 8, cy);
+          ctx.rotate(-Math.PI / 2);
+          ctx.fillText('particle 2 →', 0, 0);
+          ctx.restore();
+        } else {
+          const half = (s / 2) * grow;
+          const off = half * 0.42;
+          ctx.strokeRect(cx - half, cy - half + off * 0.5, half * 2, half * 2);
+          ctx.globalAlpha = grow * 0.55;
+          ctx.strokeRect(cx - half + off, cy - half - off * 0.5, half * 2, half * 2);
+          ctx.beginPath();
+          for (const [ex, ey] of [[-half, -half + off * 0.5], [half, -half + off * 0.5], [-half, half + off * 0.5], [half, half + off * 0.5]]) {
+            ctx.moveTo(cx + ex, cy + ey);
+            ctx.lineTo(cx + ex + off, cy + ey - off);
+          }
+          ctx.stroke();
+          ctx.globalAlpha = grow;
+          wanderBlob(ctx, cx + off * 0.4, cy, half - 8, half - 8, t, 2.6);
+        }
+        ctx.restore();
+        ctx.font = MONO(9);
+        ctx.fillStyle = PAPER;
+        ctx.fillText(labels[i][0], cx, H * 0.82);
+        ctx.fillStyle = DIM;
+        ctx.fillText(labels[i][1], cx, H * 0.82 + 13);
+      }
+
+      if (age > 11.5) {
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('REAL PARTICLES NEED 3 NUMBERS EACH — TWO OF THEM ALREADY NEED SIX DIMENSIONS', W / 2, H * 0.93);
+      }
+      if (age > 13) {
+        ctx.fillStyle = GOLD; ctx.font = MONO(10);
+        ctx.fillText('A DUST GRAIN NEEDS ~10¹⁸ — WHATEVER ψ IS, IT STOPPED FITTING IN SPACE AT TWO PARTICLES', W / 2, H * 0.975);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    function draw(ctx, W, H, t) {
+      ctx.clearRect(0, 0, W, H);
+      const age = t - actStart;
+      if (age > ACT_DUR[act] && !(act === 0 && collapse)) setAct(act + 1, t);
+
+      ctx.textAlign = 'center'; ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText(act === 0
+        ? 'ACT 1 OF 2 — WHAT KIND OF THING IS ψ?'
+        : 'ACT 2 OF 2 — WHERE DOES ψ LIVE?', W / 2, H * 0.055);
+      ctx.textAlign = 'left';
+
+      if (act === 0) drawAct1(ctx, W, H, t);
+      else drawAct2(ctx, W, H, t, t - actStart);
+    }
+
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Measure both', () => {
+    bMeasure = btn(controls, 'Measure both', () => {
+      if (act !== 0) return;
       lastMeasure = st.now();
       collapse = { x0: sampleX(st.now()), t0: st.now() };
       ro.textContent = 'LEFT: SOMETHING HAPPENED. RIGHT: YOU JUST LEARNED. WHICH IS TRUE?';
       st.pulse(3.5);
     });
+    bWhere = btn(controls, 'Where does ψ live?', () => { setAct(act + 1, st.now()); st.pulse(15); });
+    ro.textContent = 'SAME MATHEMATICS. TWO READINGS.';
     return () => st.destroy();
   }
 
@@ -1888,16 +2148,31 @@
 
   /* ============================================================
      10 — IS ANYTHING TRULY RANDOM?
-     A Bell-test meter: the needle passes the classical limit.
+     Act 1: the coin nobody can call. Act 2: play the guessing
+     game with local plans — every one caps at 75%; entangled
+     coins score ~85% (CHSH). Act 3: the ways out.
      ============================================================ */
   function vizRandomness(canvas, controls) {
     const ro = readout(controls);
-    const DUR = [13, 11, 15];
+    const DUR = [10, 18, 13];
     let act = 0, actStart = 0;
+    let bPlan;
     // act 1 — the coin nobody can call
     let bits = [], guesses = 0, correct = 0, nextEvent = 0;
-    // act 2 — the wall
-    let crossT = null;
+    // act 2 — the guessing game
+    const QWIN = Math.cos(Math.PI / 8) ** 2; // ≈ 0.8536
+    const PLANS = [
+      { name: 'PLAN 1 — BOTH ALWAYS ANSWER 0', desc: 'agree no matter what', local: true,
+        play: () => [0, 0] },
+      { name: 'PLAN 2 — ANSWER YOUR OWN QUESTION', desc: 'echo what you were asked', local: true,
+        play: (x, y) => [x, y] },
+      { name: 'PLAN 3 — FLIP COINS', desc: 'no plan at all', local: true,
+        play: () => [Math.random() < 0.5 ? 1 : 0, Math.random() < 0.5 ? 1 : 0] },
+      { name: 'SHARE ENTANGLED COINS', desc: 'measure them at clever angles', local: false,
+        play: null },
+    ];
+    const PLAN_END = [4.4, 8.8, 13, 99];
+    let plan = 0, tallyN = 0, tallyW = 0, nextRound = 0, lastRound = null, broke = null;
     // act 3 — the ways out
     const HATCHES = [
       { name: 'MANY-WORLDS',      how: ['EVERY OUTCOME', 'ACTUALLY HAPPENS'],        price: ['PRICE: ALL VERSIONS', 'OF YOU HAPPEN TOO'] },
@@ -1905,11 +2180,18 @@
       { name: 'SUPERDETERMINISM', how: ['THE UNIVERSE SCRIPTED', 'YOUR QUESTIONS TOO'], price: ['PRICE: NO EXPERIMENT', 'CAN BE TRUSTED'] },
     ];
 
+    function setPlan(i, t) {
+      plan = clamp(i, 0, 3);
+      tallyN = 0; tallyW = 0; nextRound = t + 0.4; lastRound = null;
+      if (plan < 3) broke = null;
+    }
+
     function setAct(i, t) {
       act = ((i % 3) + 3) % 3;
       actStart = t;
       if (act === 0) { bits = []; guesses = 0; correct = 0; nextEvent = 0; }
-      if (act === 1) crossT = null;
+      if (act === 1) { broke = null; setPlan(0, t); }
+      if (bPlan) bPlan.disabled = act !== 1;
     }
 
     function drawAct1(ctx, W, H, t) {
@@ -1946,7 +2228,7 @@
         ctx.fillText(b.g, x, cy - 26);
         ctx.fillStyle = b.ok ? PH : GOLD;
         ctx.font = MONO(8);
-        ctx.fillText(b.ok ? '\u2713' : '\u2717', x, cy - 8);
+        ctx.fillText(b.ok ? '✓' : '✗', x, cy - 8);
         ctx.font = MONO(11);
         ctx.fillStyle = PH;
         ctx.fillText(b.a, x, cy + 12);
@@ -1967,67 +2249,125 @@
     }
 
     function drawAct2(ctx, W, H, t, age) {
-      const cy = H * 0.52;
-      const x0 = W * 0.12, x1 = W * 0.88;
-      const xOf = (s) => lerp(x0, x1, s / 3);
-      const S_TRUE = 2 * Math.SQRT2;
+      // rules first — exact, in plain words
+      ctx.font = MONO(9); ctx.fillStyle = PAPER;
+      ctx.fillText('TWO PLAYERS, SEPARATED. EACH IS ASKED 0 OR 1, AT RANDOM. NO TALKING.', W / 2, H * 0.115);
+      ctx.fillStyle = DIM;
+      ctx.fillText('WIN RULE: BOTH ASKED 1 → ANSWERS MUST DIFFER. ANY OTHER QUESTIONS → ANSWERS MUST MATCH.', W / 2, H * 0.115 + 13);
 
-      // question first
-      ctx.textAlign = 'center'; ctx.font = MONO(10); ctx.fillStyle = PAPER;
-      ctx.fillText('MAYBE THE BITS ONLY LOOK RANDOM — A SECRET SCRIPT, WRITTEN AT BIRTH?', W / 2, H * 0.2);
-      ctx.fillStyle = DIM; ctx.font = MONO(9);
-      ctx.fillText('BELL TEST: ANY SUCH LOCAL SCRIPT SCORES AT MOST 2 ON THIS DIAL', W / 2, H * 0.2 + 15);
+      if (age > PLAN_END[plan]) setPlan(plan + 1, t);
 
-      // the track
-      ctx.strokeStyle = FAINT;
-      ctx.beginPath(); ctx.moveTo(x0, cy); ctx.lineTo(x1, cy); ctx.stroke();
-      ctx.font = MONO(9); ctx.fillStyle = DIM;
-      for (const s of [0, 1, 2, 3]) {
-        ctx.beginPath(); ctx.moveTo(xOf(s), cy - 4); ctx.lineTo(xOf(s), cy + 4);
-        ctx.strokeStyle = FAINT; ctx.stroke();
-        ctx.fillText(String(s), xOf(s), cy + 20);
+      // rounds tick in batches; the stations show the last one
+      if (t > nextRound) {
+        nextRound = t + 0.24;
+        const P = PLANS[plan];
+        let x = 0, y = 0, a = 0, b = 0, win = false;
+        for (let k = 0; k < 5; k++) {
+          x = Math.random() < 0.5 ? 1 : 0;
+          y = Math.random() < 0.5 ? 1 : 0;
+          if (P.local) { [a, b] = P.play(x, y); win = ((a ^ b) === (x & y)); }
+          else {
+            win = Math.random() < QWIN;
+            a = Math.random() < 0.5 ? 1 : 0;
+            b = (x & y) ? a ^ (win ? 1 : 0) : a ^ (win ? 0 : 1);
+          }
+          tallyN++; if (win) tallyW++;
+        }
+        lastRound = { x, y, a, b, win };
       }
 
-      // the wall at 2
+      // the current plan card
+      const P = PLANS[plan];
+      ctx.font = MONO(10);
+      ctx.fillStyle = P.local ? PAPER : GOLD;
+      ctx.fillText(P.name, W / 2, H * 0.26);
+      ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText(P.desc, W / 2, H * 0.26 + 13);
+
+      // stations
+      const sy = H * 0.42;
+      for (const [sx, who, q, ans] of [
+        [W * 0.24, 'PLAYER A', lastRound ? lastRound.x : '–', lastRound ? lastRound.a : '–'],
+        [W * 0.76, 'PLAYER B', lastRound ? lastRound.y : '–', lastRound ? lastRound.b : '–'],
+      ]) {
+        ctx.strokeStyle = FAINT;
+        ctx.strokeRect(sx - 52, sy - 24, 104, 48);
+        ctx.fillStyle = DIM; ctx.font = MONO(8);
+        ctx.fillText(who, sx, sy - 30);
+        ctx.font = MONO(11);
+        ctx.fillStyle = PAPER;
+        ctx.fillText(`ASKED ${q}`, sx - 24, sy + 4);
+        ctx.fillStyle = lastRound && !PLANS[plan].local ? GOLD : PH;
+        ctx.fillText(`SAYS ${ans}`, sx + 26, sy + 4);
+      }
+      if (lastRound) {
+        ctx.font = MONO(10);
+        ctx.fillStyle = lastRound.win ? PH : GOLD;
+        ctx.fillText(lastRound.win ? 'WIN' : 'LOSE', W / 2, sy + 4);
+      }
+
+      // the score track and the wall at 75%
+      const ty = H * 0.68;
+      const x0 = W * 0.12, x1 = W * 0.88;
+      const xOf = (pc) => lerp(x0, x1, pc / 100);
+      ctx.strokeStyle = FAINT;
+      ctx.beginPath(); ctx.moveTo(x0, ty); ctx.lineTo(x1, ty); ctx.stroke();
+      ctx.font = MONO(8); ctx.fillStyle = DIM;
+      for (const pc of [0, 25, 50, 75, 100]) {
+        ctx.strokeStyle = FAINT;
+        ctx.beginPath(); ctx.moveTo(xOf(pc), ty - 4); ctx.lineTo(xOf(pc), ty + 4); ctx.stroke();
+        ctx.fillText(`${pc}%`, xOf(pc), ty + 16);
+      }
+      // the wall
       ctx.strokeStyle = PAPER; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(xOf(2), cy - 26); ctx.lineTo(xOf(2), cy + 26); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(xOf(75), ty - 22); ctx.lineTo(xOf(75), ty + 22); ctx.stroke();
       ctx.lineWidth = 1;
-      ctx.fillStyle = PAPER;
-      ctx.fillText('EVERY LOCAL SCRIPT', xOf(2), cy - 44);
-      ctx.fillText('STOPS HERE', xOf(2), cy - 33);
-
-      // the quantum mark
+      ctx.fillStyle = PAPER; ctx.font = MONO(8);
+      ctx.fillText('EVERY LOCAL PLAN', xOf(75), ty - 38);
+      ctx.fillText('STOPS HERE — PROVEN', xOf(75), ty - 29);
+      // where entangled coins land
       ctx.fillStyle = GOLD;
-      ctx.beginPath(); ctx.moveTo(xOf(S_TRUE), cy - 12); ctx.lineTo(xOf(S_TRUE) - 4, cy - 20); ctx.lineTo(xOf(S_TRUE) + 4, cy - 20); ctx.closePath(); ctx.fill();
-      ctx.fillText('2\u221a2 \u2014 WHAT THE LAB MEASURES', xOf(S_TRUE), cy + 38);
+      ctx.beginPath();
+      ctx.moveTo(xOf(QWIN * 100), ty - 10);
+      ctx.lineTo(xOf(QWIN * 100) - 4, ty - 17);
+      ctx.lineTo(xOf(QWIN * 100) + 4, ty - 17);
+      ctx.closePath(); ctx.fill();
+      ctx.font = MONO(8);
+      ctx.fillText('≈85% — ENTANGLED COINS', xOf(QWIN * 100), ty + 28);
 
-      // the measured value slides in and smashes through
-      const S = Math.min(S_TRUE, easeOut(Math.min(age / 6.5, 1)) * S_TRUE);
-      if (crossT === null && S >= 2) crossT = t;
-      ctx.fillStyle = S >= 2 ? GOLD : PH;
-      ctx.shadowColor = S >= 2 ? GOLD : PH; ctx.shadowBlur = 12;
-      ctx.fillRect(x0, cy - 2, xOf(S) - x0, 4);
-      ctx.beginPath(); ctx.arc(xOf(S), cy, 6, 0, TAU); ctx.fill();
+      // the live score
+      const pc = tallyN ? (100 * tallyW) / tallyN : 0;
+      ctx.fillStyle = P.local ? PH : GOLD;
+      ctx.shadowColor = P.local ? PH : GOLD; ctx.shadowBlur = 10;
+      ctx.fillRect(x0, ty - 2, Math.max(0, xOf(pc) - x0), 4);
+      ctx.beginPath(); ctx.arc(xOf(pc), ty, 5, 0, TAU); ctx.fill();
       ctx.shadowBlur = 0;
+      ctx.font = MONO(10);
+      ctx.fillStyle = P.local ? PAPER : GOLD;
+      ctx.fillText(`WON ${tallyW}/${tallyN} — ${pc.toFixed(0)}%`, W / 2, H * 0.585);
 
-      if (crossT !== null && t - crossT < 2.5) {
-        const k = (t - crossT) / 2.5;
+      if (plan === 3 && broke === null && tallyN >= 40 && pc > 75) broke = t;
+      if (broke !== null && t - broke < 2.2) {
+        const k = (t - broke) / 2.2;
         ctx.globalAlpha = 1 - k;
         ctx.strokeStyle = GOLD;
-        ctx.beginPath(); ctx.arc(xOf(2), cy, 6 + easeOut(k) * 40, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(xOf(75), ty, 6 + easeOut(k) * 44, 0, TAU); ctx.stroke();
         ctx.globalAlpha = 1;
       }
-      if (crossT !== null) {
+      if (broke !== null) {
         ctx.fillStyle = GOLD; ctx.font = MONO(10);
-        ctx.fillText('THE WALL BREAKS \u2014 NO LOCAL SCRIPT CAN BE BEHIND THESE BITS', W / 2, H * 0.82);
+        ctx.fillText('THROUGH THE WALL — NO LOCAL PLAN, NONE OF THE 16 POSSIBLE, CAN DO THIS', W / 2, H * 0.88);
         ctx.fillStyle = DIM; ctx.font = MONO(9);
-        ctx.fillText('SO: TRULY RANDOM? OR SOMETHING STRANGER \u2192', W / 2, H * 0.82 + 15);
+        ctx.fillText('SO: TRULY RANDOM? OR SOMETHING STRANGER →', W / 2, H * 0.88 + 15);
+      } else if (plan < 3 && age > 3.6) {
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('TRY ANY PLAN — ALL 16 POSSIBLE LOCAL PLANS CAP AT 75%. PROVEN, NOT SEARCHED.', W / 2, H * 0.88);
       }
     }
 
     function drawAct3(ctx, W, H, t, age) {
       ctx.textAlign = 'center'; ctx.font = MONO(10); ctx.fillStyle = PAPER;
-      ctx.fillText('THREE WAYS TO SAVE DETERMINISM \u2014 EACH WITH A PRICE', W / 2, H * 0.13);
+      ctx.fillText('THREE WAYS TO SAVE DETERMINISM — EACH WITH A PRICE', W / 2, H * 0.13);
 
       const hot = clamp(Math.floor(age / (DUR[2] / 3)), 0, 2);
       const dw = W * 0.24, dh = H * 0.42, dy = H * 0.24;
@@ -2059,18 +2399,18 @@
         ctx.globalAlpha = 1;
       }
       ctx.fillStyle = GOLD; ctx.font = MONO(10);
-      ctx.fillText('NOBODY WANTS TO PAY. AFTER A CENTURY \u2014 STILL OPEN.', W / 2, H * 0.95);
+      ctx.fillText('NOBODY WANTS TO PAY. AFTER A CENTURY — STILL OPEN.', W / 2, H * 0.95);
     }
 
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
-      const age = t - actStart;
-      if (age > DUR[act]) setAct(act + 1, t);
+      let age = t - actStart;
+      if (age > DUR[act]) { setAct(act + 1, t); age = t - actStart; }
 
       ctx.textAlign = 'center'; ctx.font = MONO(9); ctx.fillStyle = FAINT;
-      const titles = ['ACT 1 OF 3 \u2014 THE COIN NOBODY CAN CALL',
-                      'ACT 2 OF 3 \u2014 COULD IT BE A SECRET SCRIPT?',
-                      'ACT 3 OF 3 \u2014 THE WAYS OUT'];
+      const titles = ['ACT 1 OF 3 — THE COIN NOBODY CAN CALL',
+                      'ACT 2 OF 3 — BEAT THE GAME WITH A SECRET PLAN',
+                      'ACT 3 OF 3 — THE WAYS OUT'];
       ctx.fillStyle = DIM;
       ctx.fillText(titles[act], W / 2, H * 0.055);
 
@@ -2080,14 +2420,25 @@
       ctx.textAlign = 'left';
 
       ro.textContent = act === 0
-        ? `BITS: ${guesses} \u00b7 PREDICTOR: ${(guesses ? 100 * correct / guesses : 50).toFixed(1)}% \u00b7 COIN FLIP: 50%`
+        ? `BITS: ${guesses} · PREDICTOR: ${(guesses ? 100 * correct / guesses : 50).toFixed(1)}% · COIN FLIP: 50%`
         : act === 1
-        ? 'ANY LOCAL SCRIPT \u2264 2 \u00b7 THE LAB MEASURES 2\u221a2 \u2248 2.83'
-        : 'THREE LOOPHOLES, THREE PRICE TAGS \u00b7 STILL OPEN';
+        ? `${PLANS[plan].name} · WON ${tallyW}/${tallyN} · LOCAL PLANS ≤ 75% · ENTANGLED ≈ 85%`
+        : 'THREE LOOPHOLES, THREE PRICE TAGS · STILL OPEN';
     }
 
     const st = stage(canvas, draw, 16 / 9);
     btn(controls, 'Next act', () => { setAct(act + 1, st.now()); st.pulse(DUR[act] + 2); });
+    bPlan = btn(controls, 'Try the next plan', () => {
+      if (act !== 1) return;
+      const t = st.now();
+      // jump straight to the next plan; realign the act clock so the
+      // schedule doesn't immediately re-advance it
+      const next = clamp(plan + 1, 0, 3);
+      actStart = t - (next > 0 ? PLAN_END[next - 1] : 0) - 0.01;
+      setPlan(next, t);
+      st.pulse(8);
+    });
+    bPlan.disabled = true;
     return () => st.destroy();
   }
 
