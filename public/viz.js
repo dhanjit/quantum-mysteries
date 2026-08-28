@@ -1947,7 +1947,7 @@
      and the return crumbles. Reversal is legal; it is fragile.
      ============================================================ */
   function vizTime(canvas, controls) {
-    const N = 110, RAD = 4, SUB = 1 / 120, SPREAD = 8;
+    const N = 110, RAD = 4, SUB = 1 / 120, SPREAD = 7.5;
     const NUDGE_DEG = 5;
     const ro = readout(controls);
     const hist = [];
@@ -2084,7 +2084,7 @@
         }
       } else if (phase === 'hold') {
         applyFrame(rec[0]);
-        if (age > 2.2) setPhase('replay', t);
+        if (age > 4.5) setPhase('replay', t);
       } else if (phase === 'rewindN') {
         acc += dt;
         while (acc >= SUB) { acc -= SUB; step(W, H); }
@@ -2092,7 +2092,7 @@
       } else if (phase === 'shatter') {
         acc += dt;
         while (acc >= SUB) { acc -= SUB; step(W, H); }
-        if (age > 3.4) reset(W, H, t);
+        if (age > 5.5) reset(W, H, t);
       }
       age = t - phaseStart;
 
