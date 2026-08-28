@@ -15,7 +15,7 @@
       viz: 'measurement',
       riddle: 'The Schrödinger equation moves every quantum system forward smoothly, predictably, deterministically — until a measurement happens. Then, abruptly, a single outcome is somehow selected and the rest of the wave is gone. Nothing in the mathematics says what counts as a “measurement”, when the collapse occurs, or whether it really occurs at all.',
       stakes: 'Every interpretation of quantum mechanics — Copenhagen, many-worlds, pilot waves, spontaneous collapse — is an attempt to answer this one question. A century after the theory was written down, there is still no agreed answer.',
-      caption: 'A particle spread out as a fog of probability. Point your detector anywhere and click to look: the whole fog snaps to one spot, drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows.',
+      caption: 'A particle spread out as a fog of probability. Point your detector anywhere and click to look: the whole fog snaps to one spot, drawn at random from |ψ|². Where did the rest of the wave go? Nobody knows. And a thousand looks pile up into the fog\u2019s exact shape — each one chance, together the Born rule, seen.',
     },
     {
       slug: 'entanglement',
@@ -26,7 +26,7 @@
       viz: 'entanglement',
       riddle: 'Measure one particle of an entangled pair and the other’s state is fixed at once — even if it is on the other side of the galaxy. Einstein dismissed this as “spooky action at a distance”. Bell’s theorem proves the particles cannot merely be carrying a secret agreement made in advance, and half a century of experiments (Nobel Prize, 2022) confirms it.',
       stakes: 'Either something links distant events faster than light (yet uselessly — no message can ride on it), or there are no pre-existing facts for measurements to reveal, or measurements don’t have single outcomes. Each escape route breaks something we thought was bedrock.',
-      caption: 'Two coins from the same quantum mint drift apart, still spinning — neither has a face yet. Look at either one: both land that instant, and always opposite. No signal passes between them.',
+      caption: 'Act one: ask both coins the same question — they always land opposite. No mystery yet; gloves in envelopes do that, so each pair could carry an answer sheet written at birth. Act two tilts the questions between 0°, 60° and 120°: any sheet caps the third bar at the first two combined, and the coins sail past it. No signal travels — yet no local script survives.',
     },
     {
       slug: 'duality',
@@ -48,7 +48,7 @@
       viz: 'boundary',
       riddle: 'Electrons superpose; tables and cats apparently don’t. Decoherence explains why big superpositions become impossible to see — the environment “measures” everything, constantly — but not why one definite outcome becomes real. Meanwhile experiments keep putting ever larger objects, now molecules beyond 25,000 atomic mass units, into superposition. No edge has ever been found.',
       stakes: 'If there is no boundary, then the universe as a whole — including you — has a wavefunction. If there is one, something unknown to physics draws the line.',
-      caption: 'The same trick at four sizes: an electron holds its two places as long as the world is kept out; a molecule loses them in moments; a dust grain instantly; a cat never begins. The laws are identical at every size — no edge has ever been found.',
+      caption: 'The same trick at four sizes: an electron holds its two places as long as the world is kept out; a molecule lasts milliseconds even in high vacuum; a dust grain in ordinary air loses them in 10⁻³¹ seconds; a cat never begins. The laws are identical at every size — no edge has ever been found.',
     },
     {
       slug: 'psi',
@@ -70,7 +70,7 @@
       viz: 'information',
       riddle: 'Quantum mechanics forbids information from being destroyed — ever. Yet apply quantum field theory to the curved spacetime of general relativity and Hawking’s calculation says black holes evaporate into featureless thermal radiation, carrying no memory of what fell in. When the black hole is gone, where did everything go?',
       stakes: 'One of our two best theories must give ground. Recent “island” calculations hint that the information does escape in the radiation — but no one can yet say how it gets out.',
-      caption: 'Structure falls in; featureless heat leaks out; the hole shrinks and finally vanishes. Watch to the end: every bit that fell in is missing from the books — QM forbids that, so either the bits sneak out in the static (nobody can show how) or physics loses its memory.',
+      caption: 'Structure falls in; featureless heat leaks out; the hole shrinks and finally vanishes. The small graph keeps both ledgers of what the radiation remembers: Hawking\u2019s climbs to the very end, while quantum mechanics demands it turn over just past halfway — the Page curve — and come home empty. The books split on screen; one of our two best calculations is wrong.',
     },
     {
       slug: 'gravity',
@@ -103,7 +103,7 @@
       viz: 'time',
       riddle: 'The fundamental laws run backwards almost as happily as forwards — the one tiny known exception, in the weak force, cannot explain eggs. Reverse every velocity and physics raises no objection; yet eggs break and never unbreak. Entropy explains the one-way street only by assuming the early universe began in an extraordinarily ordered state, and nobody knows why it did.',
       stakes: 'Memory, causation and ageing all hang on an unexplained initial condition. Worse, in quantum gravity the equations suggest time may not be fundamental at all.',
-      caption: 'A gas spreads and its entropy climbs — then time reverses and every particle retraces its path, order returning. The laws permit it perfectly. So why does it never happen to you?',
+      caption: 'A gas spreads; entropy climbs. Reverse every velocity and each particle retraces its path — order returns, and the laws never object. Then the same film runs again with one particle nudged a few degrees: collision by collision the error spreads, and the return crumbles. Unbreaking an egg needs every atom exact — that is why you never see it.',
     },
     {
       slug: 'randomness',

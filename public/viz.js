@@ -123,6 +123,7 @@
       motes.push({ u: Math.random(), v: Math.random(), tw: rand(0, TAU) });
     }
     let collapse = null; // {x0, t0}
+    let burst = null, lastBurst = -20; // {t0, d, bins, fed}
     let pointer = null;
     let nMeas = 0;
     let lastAction = 0;
@@ -151,10 +152,12 @@
     function draw(ctx, W, H, t) {
       ctx.clearRect(0, 0, W, H);
       const base = H * 0.84, top = H * 0.14;
-      const d = density(t);
+      const d = burst ? burst.d : density(t);
 
-      // looks happen on their own if nobody intervenes
-      if (!collapse && t > 5 && t - lastAction > 7) look();
+      // looks happen on their own if nobody intervenes — and every so
+      // often the instrument looks a thousand times in a row
+      if (!burst && !collapse && t > 24 && t - lastBurst > 44) burstLook();
+      if (!burst && !collapse && t > 5 && t - lastAction > 7) look();
 
       let k = 0, x0 = 0.5;
       if (collapse) {
@@ -195,6 +198,44 @@
       ctx.globalAlpha = 0.5;
       ctx.fill();
       ctx.globalAlpha = 1;
+
+      // a thousand looks at once: each one pure chance, the pile-up
+      // exactly the fog — the Born rule, made visible
+      if (burst) {
+        const bt = t - burst.t0;
+        const target = Math.min(1000, Math.floor(easeOut(clamp(bt / 2.2, 0, 1)) * 1000));
+        let tot = 0;
+        for (const v of d) tot += v;
+        while (burst.fed < target) {
+          let r = Math.random() * tot, xi = N - 1;
+          for (let i = 0; i < N; i++) { r -= d[i]; if (r <= 0) { xi = i; break; } }
+          burst.bins[clamp(Math.floor((xi / (N - 1)) * 48), 0, 47)]++;
+          burst.fed++;
+        }
+        let bmax = 1;
+        for (const v of burst.bins) if (v > bmax) bmax = v;
+        ctx.fillStyle = GOLD;
+        ctx.globalAlpha = 0.75;
+        const bw = W / 48;
+        for (let i = 0; i < 48; i++) {
+          const bh = (burst.bins[i] / bmax) * (base - top);
+          ctx.fillRect(i * bw + 0.5, base - bh, bw - 1, bh);
+        }
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = PAPER;
+        ctx.beginPath();
+        for (let i = 0; i < N; i++) {
+          ctx.lineTo((i / (N - 1)) * W, base - d[i] * (base - top));
+        }
+        ctx.stroke();
+        ctx.font = MONO(10); ctx.textAlign = 'center';
+        ctx.fillStyle = GOLD;
+        ctx.fillText(`${burst.fed} LOOKS — EACH PURE CHANCE. TOGETHER: THE FOG'S EXACT SHAPE.`, W / 2, H * 0.07);
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('THE HISTOGRAM IS |ψ|² — THE BORN RULE, SEEN', W / 2, H * 0.955);
+        ctx.textAlign = 'left';
+        if (bt > 7.5) burst = null;
+      }
 
       // fireflies in the fog — any of them might be the one
       for (const mo of motes) {
@@ -245,7 +286,7 @@
       ctx.fillStyle = DIM;
       ctx.font = MONO(9);
       ctx.fillText('PROBABILITY FOG · |ψ(x)|²', 12, H * 0.97);
-      if (!collapse) {
+      if (!collapse && !burst) {
         const LINES = [
           'THIS GLOW IS ONE PARTICLE — NOT MOVING, JUST SPREAD OUT',
           'CLICKING = LOOKING. LOOKING FORCES ONE DEFINITE ANSWER',
@@ -265,6 +306,7 @@
     const st = stage(canvas, draw, 16 / 9);
 
     function look() {
+      if (burst) burst = null;
       const t = st.now();
       const d = density(t);
       let total = 0;
@@ -281,6 +323,17 @@
       st.pulse(3.2);
     }
 
+    function burstLook() {
+      const t = st.now();
+      collapse = null;
+      burst = { t0: t, d: density(t), bins: new Float32Array(48), fed: 0 };
+      lastBurst = t;
+      lastAction = t;
+      nMeas += 1000;
+      ro.textContent = `LOOKS: ${nMeas} · A THOUSAND AT ONCE — WATCH THE PILE-UP BECOME |ψ|²`;
+      st.pulse(9);
+    }
+
     const onMove = (e) => {
       const r = canvas.getBoundingClientRect();
       pointer = { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -294,6 +347,7 @@
     if (!touchOnly) canvas.style.cursor = 'none';
 
     btn(controls, 'Look', look);
+    btn(controls, 'Look \u00d71000', burstLook);
 
     return () => {
       canvas.removeEventListener('pointermove', onMove);
@@ -306,30 +360,67 @@
 
   /* ============================================================
      02 — ENTANGLEMENT
-     A pair flies apart in superposition; measuring either one
-     fixes both, instantly, every time.
+     Act 1: ask both coins the same question — always opposite.
+     Honest beat: separated gloves do that too, so maybe each
+     pair carries an answer sheet written at birth (EPR).
+     Act 2: tilt the questions between 0°/60°/120° and tally the
+     SAME rates — if sheets existed, bar 3 could never pass
+     bar 1 + bar 2 (Wigner–d'Espagnat form of Bell; the numbers
+     live in docs/research/verified-numbers.md). It does.
      ============================================================ */
   function vizEntanglement(canvas, controls) {
-    let pair = null, pairs = 0, opposite = 0;
-    let posA = null, posB = null, lastUser = -99;
     const touchOnly = window.matchMedia('(hover: none)').matches;
     const ro = readout(controls);
-    let bA, bB;
+    let bA, bB, bTilt;
+
+    const ANGLES = [0, 60, 120];
+    const COMBOS = [[0, 1], [1, 2], [0, 2]];
+    const pSame = (dDeg) => Math.sin(((dDeg * Math.PI) / 180) / 2) ** 2;
+    const ACT_DUR = [14, 22];
+
+    let act = 0, actStart = 0;
+    // act 1 — matched detectors
+    let pair = null, pairs = 0, opposite = 0;
+    let posA = null, posB = null, lastUser = -99;
+    // act 2 — tilted detectors
+    let tally = null, nextShot = 0, shot = null, brokenAt = null;
+
+    function syncRo() {
+      if (act === 0) {
+        ro.textContent = pairs
+          ? `PAIRS: ${pairs} · LANDED OPPOSITE: ${opposite}/${pairs} — EVERY TIME`
+          : 'IT RUNS ITSELF — OR LOOK AT A COIN YOURSELF';
+      } else {
+        const pct = (i) => (tally[i].n ? Math.round((100 * tally[i].same) / tally[i].n) : 0);
+        const total = tally[0].n + tally[1].n + tally[2].n;
+        ro.textContent = `${total} PAIRS · SAME AT 60° APART: ${pct(0)}% & ${pct(1)}% · AT 120°: ${pct(2)}% · ANY LOCAL SHEET: ≤ ${Math.min(100, pct(0) + pct(1))}%`;
+      }
+    }
+
+    function setAct(i, t) {
+      act = ((i % 2) + 2) % 2;
+      actStart = t;
+      if (act === 0) { pair = null; pairs = 0; opposite = 0; }
+      else { tally = COMBOS.map(() => ({ n: 0, same: 0 })); nextShot = t + 0.7; shot = null; brokenAt = null; }
+      if (bTilt) bTilt.textContent = act === 0 ? 'Tilt the detectors' : 'Matched detectors again';
+      if (bA) { bA.disabled = act === 1; bB.disabled = act === 1; }
+      syncRo();
+    }
 
     function newPair(t) {
       pair = { born: t, measured: false, mT: 0, fA: '', fB: '', ph: rand(0, TAU) };
-      if (bA) { bA.disabled = false; bB.disabled = false; }
+      if (bA && act === 0) { bA.disabled = false; bB.disabled = false; }
     }
 
     function look(which, t) {
-      if (!pair || pair.measured) return;
+      if (act !== 0 || !pair || pair.measured) return;
       pair.measured = true;
       pair.mT = t;
       pair.fA = Math.random() < 0.5 ? 'H' : 'T';
       pair.fB = pair.fA === 'H' ? 'T' : 'H';
       pair.by = which;
       pairs++; opposite++;
-      ro.textContent = `PAIRS: ${pairs} \u00b7 LANDED OPPOSITE: ${opposite}/${pairs} \u2014 EVERY TIME`;
+      syncRo();
       bA.disabled = true; bB.disabled = true;
     }
 
@@ -371,17 +462,46 @@
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 1;
     }
 
-    function draw(ctx, W, H, t) {
-      ctx.clearRect(0, 0, W, H);
+    /* act-2 widgets: a coin that has already landed, and the dial
+       showing which of the three questions is being asked */
+    function miniCoin(ctx, x, y, face, same) {
+      const col = same ? GOLD : PH;
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 13, 0, TAU); ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.fillStyle = col; ctx.font = MONO(12); ctx.textBaseline = 'middle';
+      ctx.fillText(face, x, y + 1);
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    function dial(ctx, x, y, deg) {
+      for (const a of ANGLES) {
+        const th = ((a - 90) * Math.PI) / 180;
+        ctx.strokeStyle = FAINT;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(th) * 19, y + Math.sin(th) * 19);
+        ctx.lineTo(x + Math.cos(th) * 26, y + Math.sin(th) * 26);
+        ctx.stroke();
+      }
+      const th = ((deg - 90) * Math.PI) / 180;
+      ctx.strokeStyle = PAPER; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(th) * 16, y + Math.sin(th) * 16);
+      ctx.lineTo(x + Math.cos(th) * 27, y + Math.sin(th) * 27);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+
+    function drawAct1(ctx, W, H, t) {
       if (!pair) newPair(t);
       const age = t - pair.born;
       const cy = H * 0.44;
-      const sep = Math.min(easeOut(Math.min(age / 6, 1)) * (W * 0.42), W * 0.42);
+      const sep = Math.min(easeOut(Math.min(age / 4.5, 1)) * (W * 0.42), W * 0.42);
       const xA = W / 2 - 30 - sep, xB = W / 2 + 30 + sep;
       posA = { x: xA, y: cy }; posB = { x: xB, y: cy };
 
       // the experiment demonstrates itself when nobody intervenes
-      if (!pair.measured && age > 4 && t - lastUser > 8) {
+      if (!pair.measured && age > 3.5 && t - lastUser > 6) {
         look(Math.random() < 0.5 ? 'A' : 'B', t);
       }
 
@@ -403,7 +523,7 @@
           }
           ctx.globalAlpha = 1;
         }
-        if (dt > 2.6) newPair(t);
+        if (dt > 2.4) newPair(t);
       }
 
       drawCoin(ctx, xA, cy, pair.fA, m, t, pair.by === 'A');
@@ -411,17 +531,126 @@
 
       const ly = (sep * 2 + 60) / 10;
       ctx.fillStyle = DIM; ctx.font = MONO(10); ctx.textAlign = 'center';
-      ctx.fillText('TWO COINS FROM THE SAME QUANTUM MINT \u2014 STILL SPINNING', W / 2, H * 0.72);
+      ctx.fillText('TWO COINS FROM THE SAME QUANTUM MINT — STILL SPINNING', W / 2, H * 0.72);
       ctx.fillText(`SEPARATION: ${ly.toFixed(1)} LIGHT-YEARS (PRETEND)`, W / 2, H * 0.82);
       ctx.fillText('A', xA, cy - 34);
       ctx.fillText('B', xB, cy - 34);
-      if (m && t - pair.mT < 2.6) {
+      if (m && t - pair.mT < 2.4) {
         ctx.fillStyle = GOLD;
         ctx.fillText('BOTH LANDED. OPPOSITE. NO SIGNAL TRAVELLED.', W / 2, H * 0.14);
       } else if (!m) {
         ctx.fillStyle = DIM;
-        ctx.fillText(touchOnly ? 'TAP A COIN \u2014 OR JUST WATCH' : 'CLICK A COIN \u2014 OR JUST WATCH', W / 2, H * 0.14);
+        ctx.fillText(touchOnly ? 'TAP A COIN — OR JUST WATCH' : 'CLICK A COIN — OR JUST WATCH', W / 2, H * 0.14);
       }
+      if (pairs >= 2) {
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText('NO MYSTERY YET — SEPARATED GLOVES DO THIS. MAYBE EACH PAIR CARRIES AN ANSWER SHEET.', W / 2, H * 0.93);
+      }
+    }
+
+    function drawAct2(ctx, W, H, t, age) {
+      const cy = H * 0.3;
+      const xA = W * 0.14, xB = W * 0.86;
+
+      ctx.fillStyle = DIM; ctx.font = MONO(9);
+      ctx.fillText('THREE QUESTIONS PER COIN — 0°, 60°, 120°. AN ANSWER SHEET CAPS BAR 3 AT BAR 1 + BAR 2.', W / 2, H * 0.115);
+
+      // a tick of fresh pairs, asked two tilted questions — the mint
+      // streams 8 pairs per tick (the dials show the last of them)
+      if (t > nextShot) {
+        nextShot = t + 0.3;
+        const ci = (tally[0].n + tally[1].n + tally[2].n) / 8 % 3 | 0;
+        const [i0, i1] = COMBOS[ci];
+        const p = pSame(Math.abs(ANGLES[i0] - ANGLES[i1]));
+        let same = false;
+        for (let k = 0; k < 8; k++) {
+          same = Math.random() < p;
+          tally[ci].n++; if (same) tally[ci].same++;
+        }
+        const flip = Math.random() < 0.5;
+        const fA = Math.random() < 0.5 ? 'H' : 'T';
+        shot = {
+          ci, aIdx: flip ? i1 : i0, bIdx: flip ? i0 : i1,
+          fA, fB: same ? fA : (fA === 'H' ? 'T' : 'H'), same,
+        };
+        syncRo();
+      }
+
+      // channel
+      ctx.strokeStyle = FAINT; ctx.setLineDash([1, 5]);
+      ctx.beginPath(); ctx.moveTo(xA + 34, cy); ctx.lineTo(xB - 34, cy); ctx.stroke();
+      ctx.setLineDash([]);
+
+      dial(ctx, xA, cy, shot ? ANGLES[shot.aIdx] : 0);
+      dial(ctx, xB, cy, shot ? ANGLES[shot.bIdx] : 0);
+      if (shot) {
+        miniCoin(ctx, xA, cy, shot.fA, shot.same);
+        miniCoin(ctx, xB, cy, shot.fB, shot.same);
+        ctx.fillStyle = DIM; ctx.font = MONO(9);
+        ctx.fillText(`ASKED AT ${ANGLES[shot.aIdx]}°`, xA, cy + 46);
+        ctx.fillText(`ASKED AT ${ANGLES[shot.bIdx]}°`, xB, cy + 46);
+        ctx.fillStyle = shot.same ? GOLD : PH; ctx.font = MONO(10);
+        ctx.fillText(shot.same ? 'SAME' : 'OPPOSITE', W / 2, cy - 12);
+      }
+
+      // the tally — three bars and the sheet limit
+      const baseY = H * 0.84, maxH = H * 0.36, bw = W * 0.11;
+      const cxs = [W * 0.33, W * 0.5, W * 0.67];
+      const pcts = tally.map((c) => (c.n ? c.same / c.n : 0));
+      const ceil = Math.min(1, pcts[0] + pcts[1]);
+      const minN = Math.min(tally[0].n, tally[1].n, tally[2].n);
+      const over = minN >= 24 && pcts[2] > ceil;
+      for (let i = 0; i < 3; i++) {
+        const hgt = pcts[i] * maxH;
+        ctx.fillStyle = i === 2 && over ? GOLD : PH;
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(cxs[i] - bw / 2, baseY - hgt, bw, hgt);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = DIM; ctx.font = MONO(8);
+        ctx.fillText(['0° vs 60°', '60° vs 120°', '0° vs 120°'][i], cxs[i], baseY + 13);
+        if (tally[i].n) {
+          ctx.fillStyle = i === 2 && over ? GOLD : PAPER; ctx.font = MONO(9);
+          ctx.fillText(`SAME ${Math.round(pcts[i] * 100)}%`, cxs[i], baseY - hgt - 6);
+        }
+      }
+      ctx.strokeStyle = FAINT;
+      ctx.beginPath(); ctx.moveTo(W * 0.24, baseY); ctx.lineTo(W * 0.76, baseY); ctx.stroke();
+
+      if (minN >= 24) {
+        const y = baseY - ceil * maxH;
+        ctx.strokeStyle = PAPER;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(cxs[2] - bw * 0.9, y); ctx.lineTo(cxs[2] + bw * 0.9, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = PAPER; ctx.font = MONO(8); ctx.textAlign = 'left';
+        ctx.fillText('ANY SHEET: ≤ THIS', cxs[2] + bw * 0.9 + 6, y + 3);
+        ctx.textAlign = 'center';
+      }
+
+      // say the impossible part while the bar is over the line
+      if (brokenAt === null && (over && pcts[2] > ceil + 0.03 || (age > 16 && over))) brokenAt = t;
+      if (brokenAt !== null && over) {
+        ctx.fillStyle = GOLD; ctx.font = MONO(10);
+        ctx.fillText('BAR 3 PASSES THE SHEET LIMIT — NO LOCAL, PRE-WRITTEN ANSWERS SURVIVE (BELL, 1964)', W / 2, H * 0.95);
+      }
+    }
+
+    function draw(ctx, W, H, t) {
+      ctx.clearRect(0, 0, W, H);
+      const age = t - actStart;
+      if (act === 0 && ((age > ACT_DUR[0] && pairs >= 2 && pair && pair.measured && t - pair.mT > 2) || age > ACT_DUR[0] + 8)) {
+        setAct(1, t);
+      } else if (act === 1 && age > ACT_DUR[1]) {
+        setAct(0, t);
+      }
+
+      ctx.textAlign = 'center'; ctx.font = MONO(9); ctx.fillStyle = DIM;
+      ctx.fillText(act === 0
+        ? 'ACT 1 OF 2 — ASK BOTH COINS THE SAME QUESTION'
+        : 'ACT 2 OF 2 — TILT THE QUESTIONS', W / 2, H * 0.055);
+
+      if (act === 0) drawAct1(ctx, W, H, t);
+      else drawAct2(ctx, W, H, t, t - actStart);
       ctx.textAlign = 'left';
     }
 
@@ -433,14 +662,14 @@
       return [e.clientX - r.left, e.clientY - r.top];
     };
     const onClick = (e) => {
-      if (!pair || pair.measured) return;
+      if (act !== 0 || !pair || pair.measured) return;
       const [x, y] = canvasXY(e);
       if (near(posA, x, y)) { lastUser = st.now(); look('A', st.now()); st.pulse(3); }
       else if (near(posB, x, y)) { lastUser = st.now(); look('B', st.now()); st.pulse(3); }
     };
     const onMove = (e) => {
       const [x, y] = canvasXY(e);
-      const hot = pair && !pair.measured && (near(posA, x, y) || near(posB, x, y));
+      const hot = act === 0 && pair && !pair.measured && (near(posA, x, y) || near(posB, x, y));
       canvas.style.cursor = hot ? 'pointer' : '';
     };
     canvas.addEventListener('click', onClick);
@@ -448,7 +677,8 @@
 
     bA = btn(controls, 'Look at coin A', () => { lastUser = st.now(); look('A', st.now()); st.pulse(3); });
     bB = btn(controls, 'Look at coin B', () => { lastUser = st.now(); look('B', st.now()); st.pulse(3); });
-    ro.textContent = 'IT RUNS ITSELF \u2014 OR LOOK AT A COIN YOURSELF';
+    bTilt = btn(controls, 'Tilt the detectors', () => { setAct(act + 1, st.now()); st.pulse(10); });
+    ro.textContent = 'IT RUNS ITSELF — OR LOOK AT A COIN YOURSELF';
     return () => {
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('pointermove', onMove);
@@ -1058,6 +1288,60 @@
         ro.textContent = 'LEDGER REFUSES TO BALANCE · BEST BET: THE BITS RIDE OUT IN THE STATIC — NOBODY CAN SHOW HOW';
       }
 
+
+      // the two ledgers: what the radiation remembers, against time.
+      // Hole entropy ∝ M² with M = M₀(1−u)^⅓; thermal radiation carries
+      // ≈1.5× the entropy the hole spends (Zurek 1982); unitarity caps the
+      // radiation's entanglement entropy at the hole's — the Page curve,
+      // turning over at u ≈ 0.54 (derivation in docs/research/verified-numbers.md).
+      {
+        const gx = 14, gy = H * 0.4, gw = W * 0.3, gh = H * 0.3;
+        const u = evapK;
+        const sBH = (v) => Math.pow(1 - v, 2 / 3);
+        const sHawk = (v) => 1.5 * (1 - sBH(v));
+        const sPage = (v) => Math.min(sHawk(v), sBH(v));
+        const X = (v) => gx + v * gw;
+        const Y = (s) => gy + gh - (s / 1.5) * gh * 0.94;
+        const curve = (f, upto, dashed) => {
+          ctx.setLineDash(dashed ? [3, 3] : []);
+          ctx.beginPath();
+          for (let i = 0; i <= 60; i++) {
+            const v = (i / 60) * upto;
+            i ? ctx.lineTo(X(v), Y(f(v))) : ctx.moveTo(X(v), Y(f(v)));
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        };
+        ctx.strokeStyle = FAINT;
+        ctx.strokeRect(gx, gy, gw, gh);
+        // both books, full prediction, faint
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = PAPER; curve(sHawk, 1, true);
+        ctx.strokeStyle = PH; curve(sPage, 1, true);
+        ctx.globalAlpha = 1;
+        // written so far, solid
+        ctx.strokeStyle = PAPER; curve(sHawk, u, false);
+        ctx.strokeStyle = PH; ctx.lineWidth = 1.6; curve(sPage, u, false);
+        ctx.lineWidth = 1;
+        ctx.fillStyle = GOLD;
+        ctx.beginPath(); ctx.arc(X(u), Y(sHawk(u)), 2.2, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(X(u), Y(sPage(u)), 2.2, 0, TAU); ctx.fill();
+        ctx.font = MONO(8);
+        ctx.fillStyle = DIM;
+        ctx.fillText('WHAT THE RADIATION REMEMBERS', gx, gy - 6);
+        ctx.fillStyle = PAPER;
+        ctx.fillText('HAWKING’S BOOKS: NEVER COMES BACK', gx + 5, gy + 11);
+        ctx.fillStyle = PH;
+        ctx.fillText('QM’S BOOKS: MUST TURN OVER (PAGE CURVE)', gx + 5, gy + 21);
+        if (terminal) {
+          ctx.fillStyle = GOLD;
+          ctx.fillText('ONE BOOK ENDS FULL, ONE EMPTY — ONE IS WRONG', gx, gy + gh + 12);
+        } else if (u > 0.56) {
+          ctx.fillStyle = GOLD;
+          ctx.fillText('PAST HALFWAY — THE TWO BOOKS SPLIT, LIVE', gx, gy + gh + 12);
+        }
+      }
+
       // outgoing thermal radiation — identical, featureless
       const rate = terminal ? 2 : 6 + 26 * evapK;
       if (Math.random() < dt * rate && outbits.length < 70 && !terminal) {
@@ -1221,6 +1505,9 @@
       } else if (mouse) {
         ctx.fillStyle = DIM;
         ctx.fillText('MOVE THE LENS ONTO THE PARTICLE', W / 2, H * 0.955);
+      } else {
+        ctx.fillStyle = DIM;
+        ctx.fillText('COLLIDERS REACH 10\u2074 GeV \u00b7 THE PLANCK SCALE SITS AT 10\u00b9\u2079 \u2014 10\u00b9\u2075 BEYOND ANY REFEREE', W / 2, H * 0.955);
       }
       ctx.textAlign = 'left';
     }
@@ -1354,31 +1641,85 @@
 
   /* ============================================================
      09 — THE ARROW OF TIME
-     Reversible laws, irreversible world. Try running it backwards.
+     Reversible laws, irreversible world — and Loschmidt's answer.
+     The gas collides (hard disks). Beat 1: flip every velocity and
+     the recorded history replays backwards exactly — entropy falls,
+     legally. Beat 2: the same history, flipped again with ONE
+     particle nudged a few degrees — collisions amplify the hair
+     and the return crumbles. Reversal is legal; it is fragile.
      ============================================================ */
   function vizTime(canvas, controls) {
-    let parts = null, reversals = 0, dir = 1, lastReverse = 0, lastSample = 0;
-    const N = 110;
+    const N = 110, RAD = 4, SUB = 1 / 120, SPREAD = 8;
+    const NUDGE_DEG = 5;
     const ro = readout(controls);
     const hist = [];
+    let parts = null, phase = 'spread', phaseStart = 0, lastSample = 0, acc = 0;
+    let rec = null, nudgeIdx = -1;
+    let bRev, bNudge;
 
-    function doReverse() {
-      if (!parts) return;
-      for (const p of parts) { p.vx = -p.vx; p.vy = -p.vy; }
-      dir = -dir; reversals++;
+    const snap = () => {
+      const a = new Float32Array(N * 2);
+      for (let i = 0; i < N; i++) { a[i * 2] = parts[i].x; a[i * 2 + 1] = parts[i].y; }
+      return a;
+    };
+    const applyFrame = (f) => {
+      for (let i = 0; i < N; i++) { parts[i].x = f[i * 2]; parts[i].y = f[i * 2 + 1]; }
+    };
+    const playDur = () => (rec && rec.length > 1 ? (rec.length - 1) * SUB : SPREAD);
+
+    function setPhase(name, t) {
+      phase = name;
+      phaseStart = t;
+      if (bRev) {
+        // reversing is only honest where the velocities are known
+        bRev.disabled = !(phase === 'spread' || phase === 'replay');
+        bNudge.disabled = phase !== 'spread';
+      }
     }
 
-    function reset(W, H) {
+    function reset(W, H, t) {
       parts = [];
       for (let i = 0; i < N; i++) {
         parts.push({
-          x: rand(W * 0.05, W * 0.22),
-          y: rand(H * 0.68, H * 0.92),
+          x: rand(W * 0.05, W * 0.28),
+          y: rand(H * 0.62, H * 0.92),
           vx: rand(-70, 70),
           vy: rand(-70, 70),
         });
       }
+      rec = [snap()]; nudgeIdx = -1; acc = 0;
       hist.length = 0;
+      setPhase('spread', t);
+    }
+
+    // one fixed sub-step of real physics: free flight, walls, disk collisions
+    function step(W, H) {
+      for (const p of parts) {
+        p.x += p.vx * SUB; p.y += p.vy * SUB;
+        if (p.x < RAD) { p.x = 2 * RAD - p.x; p.vx = -p.vx; }
+        if (p.x > W - RAD) { p.x = 2 * (W - RAD) - p.x; p.vx = -p.vx; }
+        if (p.y < RAD) { p.y = 2 * RAD - p.y; p.vy = -p.vy; }
+        if (p.y > H - RAD) { p.y = 2 * (H - RAD) - p.y; p.vy = -p.vy; }
+      }
+      const D = RAD * 2;
+      for (let i = 0; i < N; i++) {
+        const a = parts[i];
+        for (let j = i + 1; j < N; j++) {
+          const b = parts[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= D * D || d2 < 1e-9) continue;
+          const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+          const va = a.vx * nx + a.vy * ny, vb = b.vx * nx + b.vy * ny;
+          if (va - vb <= 0) continue;
+          const push = (D - d) / 2 + 0.01;
+          a.x -= nx * push; a.y -= ny * push;
+          b.x += nx * push; b.y += ny * push;
+          const dv = va - vb;
+          a.vx -= dv * nx; a.vy -= dv * ny;
+          b.vx += dv * nx; b.vy += dv * ny;
+        }
+      }
     }
 
     function entropy(W, H) {
@@ -1396,31 +1737,86 @@
       return S;
     }
 
+    function reverseClean(t) {
+      // replay the recorded trajectory backwards — what a perfect
+      // velocity flip would do, rendered exactly
+      if (!rec || rec.length < 40) return;
+      if (phase === 'replay') {
+        const k = clamp((t - phaseStart) / playDur(), 0, 1);
+        setPhase('rewind', t);
+        phaseStart = t - (1 - k) * playDur();
+      } else if (phase === 'spread') {
+        setPhase('rewind', t);
+      }
+    }
+
+    function reverseNudged(t) {
+      // real physics from here on: flip every velocity, then rotate
+      // ONE particle's by a few degrees
+      if (phase !== 'spread' && phase !== 'replay') return;
+      for (const p of parts) { p.vx = -p.vx; p.vy = -p.vy; }
+      nudgeIdx = Math.floor(rand(0, N));
+      const p = parts[nudgeIdx];
+      const a = (NUDGE_DEG * Math.PI) / 180;
+      const vx = p.vx * Math.cos(a) - p.vy * Math.sin(a);
+      const vy = p.vx * Math.sin(a) + p.vy * Math.cos(a);
+      p.vx = vx; p.vy = vy;
+      acc = 0;
+      setPhase('rewindN', t);
+    }
+
     function draw(ctx, W, H, t, dt) {
       ctx.clearRect(0, 0, W, H);
-      if (!parts) reset(W, H);
+      if (!parts) reset(W, H, t);
+      let age = t - phaseStart;
 
-      // time reverses itself, again and again
-      if (t - lastReverse > 11 && t > 2) { lastReverse = t; doReverse(); }
+      // the two-beat cycle runs itself: spread → perfect rewind →
+      // the same spread replayed → rewind with one nudge → shatter
+      if (phase === 'spread') {
+        acc += dt;
+        while (acc >= SUB) { acc -= SUB; step(W, H); rec.push(snap()); }
+        if (age > SPREAD) reverseClean(t);
+      } else if (phase === 'rewind' || phase === 'replay') {
+        const k = clamp(age / playDur(), 0, 1);
+        const idx = Math.round((phase === 'rewind' ? 1 - k : k) * (rec.length - 1));
+        applyFrame(rec[idx]);
+        if (k >= 1) {
+          if (phase === 'rewind') setPhase('hold', t);
+          else reverseNudged(t);
+        }
+      } else if (phase === 'hold') {
+        applyFrame(rec[0]);
+        if (age > 2.2) setPhase('replay', t);
+      } else if (phase === 'rewindN') {
+        acc += dt;
+        while (acc >= SUB) { acc -= SUB; step(W, H); }
+        if (age > playDur()) setPhase('shatter', t);
+      } else if (phase === 'shatter') {
+        acc += dt;
+        while (acc >= SUB) { acc -= SUB; step(W, H); }
+        if (age > 3.4) reset(W, H, t);
+      }
+      age = t - phaseStart;
 
+      const backward = phase === 'rewind' || phase === 'rewindN';
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = backward ? GOLD : PH;
       for (const p of parts) {
-        p.x += p.vx * dt; p.y += p.vy * dt;
-        if (p.x < 4) { p.x = 8 - p.x; p.vx = -p.vx; }
-        if (p.x > W - 4) { p.x = 2 * (W - 4) - p.x; p.vx = -p.vx; }
-        if (p.y < 4) { p.y = 8 - p.y; p.vy = -p.vy; }
-        if (p.y > H - 4) { p.y = 2 * (H - 4) - p.y; p.vy = -p.vy; }
-        ctx.fillStyle = dir > 0 ? PH : GOLD;
-        ctx.globalAlpha = 0.85;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.4, 0, TAU); ctx.fill();
       }
       ctx.globalAlpha = 1;
+      if (nudgeIdx >= 0 && (phase === 'rewindN' || phase === 'shatter')) {
+        const p = parts[nudgeIdx];
+        ctx.strokeStyle = PAPER;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 6.5, 0, TAU); ctx.stroke();
+      }
 
-      // entropy sparkline — sampled slowly so a whole rise-then-fall fits
+      // entropy sparkline — long enough for a whole two-beat cycle
       const S = entropy(W, H);
       if (t - lastSample > 0.1) {
         lastSample = t;
-        hist.push({ s: S, rev: dir < 0 });
-        if (hist.length > 260) hist.shift();
+        hist.push({ s: S, rev: backward });
+        if (hist.length > 420) hist.shift();
       }
       const Smax = Math.log(60);
       const gy0 = H * 0.06, gh = H * 0.16, gx0 = W * 0.62, gw = W * 0.34;
@@ -1429,7 +1825,7 @@
       ctx.strokeRect(gx0, gy0, gw, gh);
       ctx.beginPath();
       hist.forEach((h2, i) => {
-        const x = gx0 + (i / 259) * gw;
+        const x = gx0 + (i / 419) * gw;
         i ? ctx.lineTo(x, sy(h2.s)) : ctx.moveTo(x, sy(h2.s));
       });
       ctx.strokeStyle = PAPER; ctx.stroke();
@@ -1437,39 +1833,56 @@
       for (let i = 1; i < hist.length; i++) {
         if (!hist[i].rev) continue;
         ctx.beginPath();
-        ctx.moveTo(gx0 + ((i - 1) / 259) * gw, sy(hist[i - 1].s));
-        ctx.lineTo(gx0 + (i / 259) * gw, sy(hist[i].s));
+        ctx.moveTo(gx0 + ((i - 1) / 419) * gw, sy(hist[i - 1].s));
+        ctx.lineTo(gx0 + (i / 419) * gw, sy(hist[i].s));
         ctx.stroke();
       }
       ctx.lineWidth = 1;
       ctx.fillStyle = DIM; ctx.font = MONO(9);
       ctx.fillText('ENTROPY', gx0 + 6, gy0 + 12);
 
-      ctx.fillStyle = dir > 0 ? DIM : GOLD;
+      ctx.fillStyle = backward ? GOLD : DIM;
       ctx.font = MONO(10);
-      ctx.fillText(dir > 0 ? 'TIME →' : '← TIME (SAME LAWS)', 14, H * 0.1);
+      ctx.fillText(
+        phase === 'rewind' ? '← TIME (SAME LAWS)'
+          : phase === 'rewindN' ? `← TIME (ONE PARTICLE NUDGED ${NUDGE_DEG}°)`
+          : 'TIME →', 14, H * 0.1);
 
-      // say the impossible part while it is on screen
-      ctx.textAlign = 'center';
-      if (reversals > 0 && t - lastReverse < 3.2) {
+      // say each beat while it is on screen
+      ctx.textAlign = 'center'; ctx.font = MONO(10);
+      if (phase === 'rewind') {
         ctx.fillStyle = GOLD;
-        ctx.fillText(dir < 0 ? 'EVERY VELOCITY FLIPPED — THE LAWS DO NOT OBJECT' : 'FORWARD AGAIN — NO RULE WAS EVER BROKEN', W / 2, H * 0.95);
-      } else if (dir < 0) {
+        ctx.fillText('EVERY VELOCITY FLIPPED — EVERY COLLISION UNDONE. THE LAWS DO NOT OBJECT.', W / 2, H * 0.95);
+      } else if (phase === 'hold') {
         ctx.fillStyle = GOLD;
-        ctx.fillText('ENTROPY FALLING — PERFECTLY LEGAL. AT EGG SIZE, YOU WILL NEVER SEE IT.', W / 2, H * 0.95);
+        ctx.fillText('PERFECT RETURN — ENTROPY FELL. PERFECTLY LEGAL. SO WHY NEVER AN EGG?', W / 2, H * 0.95);
+      } else if (phase === 'replay') {
+        ctx.fillStyle = DIM;
+        ctx.fillText('THE SAME SPREADING, REPLAYED EXACTLY — NOW FLIP AGAIN, ONE HAIR OUT OF PLACE', W / 2, H * 0.95);
+      } else if (phase === 'rewindN') {
+        ctx.fillStyle = GOLD;
+        ctx.fillText(age < playDur() * 0.45
+          ? `FLIPPED AGAIN — BUT ONE PARTICLE (RINGED) IS OFF BY ${NUDGE_DEG}°`
+          : 'EACH COLLISION SPREADS THE ERROR — THE RETURN IS CRUMBLING', W / 2, H * 0.95);
+      } else if (phase === 'shatter') {
+        ctx.fillStyle = GOLD;
+        ctx.fillText('NO RETURN. UNBREAKING AN EGG NEEDS EVERY ATOM EXACT — ONE HAIR RUINS IT.', W / 2, H * 0.95);
       }
       ctx.textAlign = 'left';
 
-      ro.textContent = `S = ${S.toFixed(2)} · REVERSALS: ${reversals} · THE LAWS DON'T MIND`;
+      ro.textContent = `S = ${S.toFixed(2)} · ` + (
+        phase === 'spread' ? 'SPREADING — ENTROPY CLIMBS'
+        : phase === 'rewind' ? 'REVERSED — RETRACING PERFECTLY'
+        : phase === 'hold' ? 'RETURNED — THE LAWS PERMIT IT'
+        : phase === 'replay' ? 'SAME HISTORY, SECOND RUN'
+        : phase === 'rewindN' ? 'REVERSED WITH ONE NUDGE — WATCH THE RETURN FAIL'
+        : 'THE RETURN SHATTERED — THIS IS WHY EGGS STAY BROKEN');
     }
 
     const st = stage(canvas, draw, 16 / 9);
-    btn(controls, 'Reverse every velocity', () => {
-      lastReverse = st.now();
-      doReverse();
-      st.pulse(8);
-    });
-    btn(controls, 'Fresh start', () => { parts = null; dir = 1; lastReverse = st.now(); st.pulse(6); });
+    bRev = btn(controls, 'Reverse every velocity', () => { reverseClean(st.now()); st.pulse(10); });
+    bNudge = btn(controls, 'Reverse, nudging one particle', () => { reverseNudged(st.now()); st.pulse(12); });
+    btn(controls, 'Fresh start', () => { parts = null; st.pulse(6); });
     return () => st.destroy();
   }
 

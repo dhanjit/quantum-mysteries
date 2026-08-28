@@ -85,8 +85,9 @@ two rotatable dials and a running tally against the 75% classical ceiling and th
 
 **What to steal.** Tonomura's persuasive element is the **dot counter**. The
 pattern is invisible at N≈100 and undeniable at N≈1000, and watching the number
-climb while your eye insists there's nothing there is what does the work. Put N
-on the canvas.
+climb while your eye insists there's nothing there is what does the work.
+*(Second review pass: the plate already has this — the `DETECTED: n` readout
+plus fast-forward covers the arc. No change needed.)*
 
 **Avoid:** the *Dr Quantum* double-slit clip from *What the Bleep Do We Know!?* —
 still the most-shared double-slit visual online and wrong in the way that matters:
@@ -105,10 +106,12 @@ consciousness-causes-collapse. Widely criticised by physics educators.
 | Footage | [Vienna quantum nanophysics animations](https://www.quantumnano.at/science-for-all/videos-animations-podcasts/quantum-animations/) — single-molecule interference filmed in real time |
 | Best animation | [toutestquantique.fr — *superposition*](https://toutestquantique.fr/en/superposition/) covers decoherence directly |
 
-**What to steal.** Numbers. The plate currently says "moments", "instantly",
-"never" — Zurek's table says a 10 µm dust grain decoheres in ~10⁻³¹ s. Label the
-four rungs with real decoherence times and real masses and the ladder stops being
-an adjective and becomes an argument.
+**What to steal.** Numbers — *(correction, second review pass: the experiment's
+readout already carries them: 10⁻³¹ s in air for the dust grain, milliseconds in
+high vacuum for the molecule; both verified against Schlosshauer's Table 1 in
+[research/verified-numbers.md](research/verified-numbers.md). The caption now
+carries them too.)* The lesson stands for any future rung: real decoherence
+times and real masses, or the ladder is an adjective.
 
 ## 05 · Psi — *The Ghost in the Equations* (518 nm)
 
